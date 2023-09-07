@@ -1,9 +1,29 @@
 {
   "name": "koishi-plugin-minecraft-sync-msg",
-  "description": "",
-  "version": "0.0.1",
+  "description": "一个简易socket通信实现mc消息互联",
+  "version": "0.1.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
+  "homepage": "https://blog.iin0.cn/views/myblog/mc/koishiandmc.html",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Twiyin0/koishi-plugin-minecraft-sync-msg.git"
+  },
+  "contributors": [
+    "Twiyin0 <twiyin0@outlook.com>"
+  ],
+  "koishi": {
+    "browser": true,
+    "description": {
+      "en": "A simple socket communication for MC message interconnection (please stop the plugin before updating)",
+      "zh": "一个简易socket通信实现mc消息互联(更新前请停止插件)"
+    },
+    "service": {
+      "required": [
+        "database"
+      ]
+    }
+  },
   "files": [
     "lib",
     "dist"
@@ -13,7 +33,10 @@
   "keywords": [
     "chatbot",
     "koishi",
-    "plugin"
+    "plugin",
+    "minecraft",
+    "mc互联",
+    "mc"
   ],
   "peerDependencies": {
     "koishi": "^4.14.0"
