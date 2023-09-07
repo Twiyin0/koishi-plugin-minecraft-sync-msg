@@ -139,12 +139,12 @@ export async function apply(ctx: Context, cfg: Config) {
 
   ctx.on('message', async (session)=>{
     if ((session.content.startsWith('.#') || session.content.startsWith('。#')) && session.content != '.#' &&  session.content != '。#') {
-      var msg:String = session.content.replace('&amp;','§').replace('&','§').replace('.#','').replace('。#','');
+      var msg:String = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll('.#','').replaceAll('。#','');
       client.write(`[${session.username}] ${msg}`)
     }
 
     if ((session.content.startsWith('#/')) && session.content != '#/') {
-      var cmd:string = session.content.replace('&amp;','§').replace('&','§').replace('#/','');
+      var cmd:string = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll('#/','');
       if (cfg.RCON.alluser) var res = await sendRconCommand(rcon,cmd);
       else {
         if (cfg.RCON.superuser.includes(session.userId) && cfg.RCON.cannotCmd.includes(cmd))
@@ -153,7 +153,7 @@ export async function apply(ctx: Context, cfg: Config) {
           var res = await sendRconCommand(rcon,cmd);
         else session.send('无权使用该命令')
       }
-      session.send(res.replace(/§./g, ''));
+      session.send(res.replaceAll(/§./g, ''));
     }
   })
 }
