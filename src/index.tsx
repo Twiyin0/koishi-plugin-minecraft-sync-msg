@@ -45,7 +45,7 @@ export const rconConf = Schema.object({
   .description('所有用户可用(开启后下面的配置失效)'),
   superuser: Schema.array(String)
   .description('超级用户的ID，可以使用RCON所有命令'),
-  commonCmd: Schema.array(String).default(['list','tps'])
+  commonCmd: Schema.array(String).default(['list','spigot:tps'])
   .description('普通用户可以使用的命令'),
   cannotCmd: Schema.array(String).default(['restart','stop'])
 })
@@ -54,13 +54,16 @@ export interface Config {
   socket: socketConf,
   RCON: rconConf,
   sendToChannel: string[],
+  chatOnly: boolean,
 }
 
 export const Config = Schema.object({
   socket: socketConf,
   RCON: rconConf,
   sendToChannel: Schema.array(String)
-  .description('消息发送到目标群组')
+  .description('消息发送到目标群组'),
+  chatOnly: Schema.boolean().default(false)
+  .description('仅接收聊天消息')
 })
 
 declare module 'koishi' {
@@ -112,8 +115,8 @@ export async function apply(ctx: Context, cfg: Config) {
   })
 
   ctx.on('minecraft-sync-msg/socket-getdata', (data)=> {
-    if (data) {
-      data = data.replace('[聊天信息]>> ','');
+    if (data && (cfg.chatOnly? data.startsWith("[聊天信息]>>"):true)) {
+      data = data.replace('[聊天信息]>> ','').replaceAll(/§./g,'');
       var msg = (data.match(/<at id=(.*)\/>/gi) || data.match(/<image url=(.*)\/>/gi))?
         h.unescape(data):data;
       ctx.broadcast(sendChannel,msg,false)
@@ -138,9 +141,12 @@ export async function apply(ctx: Context, cfg: Config) {
   }
 
   ctx.on('message', async (session)=>{
+  if (cfg.sendToChannel.includes(`${session.platform}:${session.channelId}`) || session.platform=="sandbox") {
+    var passbyCmd:String[] = ["tps","TPS","服务器信息","server_info"];
+    if (passbyCmd.includes(session.content)) client.write(`${session.content}\n`);
     if ((session.content.startsWith('.#') || session.content.startsWith('。#')) && session.content != '.#' &&  session.content != '。#') {
       var msg:String = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll('.#','').replaceAll('。#','');
-      client.write(`[${session.username}] ${msg}`)
+      client.write(`[${session.username}] ${msg} \n`);
     }
 
     if ((session.content.startsWith('#/')) && session.content != '#/') {
@@ -149,16 +155,17 @@ export async function apply(ctx: Context, cfg: Config) {
       else {
         if (cfg.RCON.superuser.includes(session.userId)) {
           var res = cfg.RCON.cannotCmd.includes(cmd)? '危险命令，禁止使用' : await sendRconCommand(rcon,cmd);
-          res = res? res:'该命令无响应'
+          res = res? res:'该命令无反馈'
         }
         else if (cfg.RCON.commonCmd.includes(cmd)) {
           var res = cfg.RCON.cannotCmd.includes(cmd)? '危险命令，禁止使用' : await sendRconCommand(rcon,cmd);
-          res = res? res:'该命令无响应'
+          res = res? res:'该命令无反馈'
         }
         else var callbk = '无权使用该命令'
       }
       session.send(res? res.replaceAll(/§./g, '') : callbk);
     }
+  }
   })
 }
 
