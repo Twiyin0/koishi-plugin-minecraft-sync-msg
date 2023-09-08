@@ -147,13 +147,17 @@ export async function apply(ctx: Context, cfg: Config) {
       var cmd:string = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll('#/','');
       if (cfg.RCON.alluser) var res = await sendRconCommand(rcon,cmd);
       else {
-        if (cfg.RCON.superuser.includes(session.userId) && cfg.RCON.cannotCmd.includes(cmd))
-          var res = await sendRconCommand(rcon,cmd);
-        else if (cfg.RCON.commonCmd.includes(cmd))
-          var res = await sendRconCommand(rcon,cmd);
-        else session.send('无权使用该命令')
+        if (cfg.RCON.superuser.includes(session.userId)) {
+          var res = cfg.RCON.cannotCmd.includes(cmd)? '危险命令，禁止使用' : await sendRconCommand(rcon,cmd);
+          res = res? res:'该命令无响应'
+        }
+        else if (cfg.RCON.commonCmd.includes(cmd)) {
+          var res = cfg.RCON.cannotCmd.includes(cmd)? '危险命令，禁止使用' : await sendRconCommand(rcon,cmd);
+          res = res? res:'该命令无响应'
+        }
+        else var callbk = '无权使用该命令'
       }
-      session.send(res.replaceAll(/§./g, ''));
+      session.send(res? res.replaceAll(/§./g, '') : callbk);
     }
   })
 }
