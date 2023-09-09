@@ -82,7 +82,7 @@ export async function apply(ctx: Context, cfg: Config) {
     password: cfg.RCON.rconPassword,
   });
   const client = net.createConnection(cfg.socket.socketServerPort, cfg.socket.socketServerHost);
-  let sendChannel = cfg.sendToChannel;// ['onebot:737352767'];
+  let sendChannel = cfg.sendToChannel;
   // 监听连接建立事件
   client.on('connect', () => {
     // 发送数据到服务端
@@ -129,7 +129,7 @@ export async function apply(ctx: Context, cfg: Config) {
       ctx.broadcast(sendChannel,'Socket断开连接！',false)
   })
 
-  ctx.on('minecraft-sync-msg/socket-disconnect',(err)=>{
+  ctx.on('minecraft-sync-msg/socket-error',(err)=>{
     if (err) 
       ctx.broadcast(sendChannel,'Socket连接失败,请重启插件!',false)
   })
