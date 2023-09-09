@@ -82,7 +82,7 @@ export async function apply(ctx: Context, cfg: Config) {
     password: cfg.RCON.rconPassword,
   });
   const client = net.createConnection(cfg.socket.socketServerPort, cfg.socket.socketServerHost);
-  let sendChannel = cfg.sendToChannel;// ['onebot:737352767'];
+  let sendChannel = cfg.sendToChannel;
   // 监听连接建立事件
   client.on('connect', () => {
     // 发送数据到服务端
