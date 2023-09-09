@@ -129,7 +129,7 @@ export async function apply(ctx: Context, cfg: Config) {
       ctx.broadcast(sendChannel,'Socket断开连接！',false)
   })
 
-  ctx.on('minecraft-sync-msg/socket-disconnect',(err)=>{
+  ctx.on('minecraft-sync-msg/socket-error',(err)=>{
     if (err) 
       ctx.broadcast(sendChannel,'Socket连接失败,请重启插件!',false)
   })
