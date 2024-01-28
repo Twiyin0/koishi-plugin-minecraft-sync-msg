@@ -55,6 +55,7 @@ export interface Config {
   RCON: rconConf,
   sendToChannel: string[],
   chatOnly: boolean,
+  toGBK: boolean,
 }
 
 export const Config = Schema.object({
@@ -63,7 +64,9 @@ export const Config = Schema.object({
   sendToChannel: Schema.array(String)
   .description('消息发送到目标群组'),
   chatOnly: Schema.boolean().default(false)
-  .description('仅接收聊天消息')
+  .description('仅接收聊天消息'),
+  toGBK: Schema.boolean().default(false)
+  .description("接收消息转为gbk")
 })
 
 declare module 'koishi' {
@@ -92,9 +95,9 @@ export async function apply(ctx: Context, cfg: Config) {
 
   // 监听从服务端接收到的数据
   client.on('data', (data) => {
-    const gbkmsg = iconv.decode(data, 'gbk'); // 使用iconv-lite将数据从GBK编码解码为字符串
+    const decodemsg = cfg.toGBK? iconv.decode(data, 'gbk'): data.toString('utf-8');
     // 处理接收到的数据，可以触发自定义事件
-    ctx.emit('minecraft-sync-msg/socket-getdata', gbkmsg);
+    ctx.emit('minecraft-sync-msg/socket-getdata', decodemsg);
   });
 
   // 监听连接关闭事件
@@ -104,10 +107,12 @@ export async function apply(ctx: Context, cfg: Config) {
 
   // 监听连接错误事件
   client.on('error', (err) => {
-    ctx.emit('minecraft-sync-msg/socket-error', true)
     logger.error('Socket连接错误:', err);
+    if (err.code === 'ECONNREFUSED') {
+      logger.error('Socket连接被服务器拒绝');
+    }
+    ctx.emit('minecraft-sync-msg/socket-error', true)
   });
-
 
   ctx.on('minecraft-sync-msg/socket-connected', (connected)=>{
     if (connected)
