@@ -1,4 +1,6 @@
-import { Context, Schema, Logger, h } from 'koishi'
+import { Session } from 'inspector';
+import { Context, Schema, Logger, h, Bot } from 'koishi'
+import { config } from 'process';
 
 const iconv = require('iconv-lite');
 const net = require('net');
@@ -25,6 +27,7 @@ export const socketConf = Schema.object({
 })
 
 export interface rconConf {
+  rconEnable: boolean,
   rconServerHost: String,
   rconServerPort: String,
   rconPassword: String,
@@ -35,11 +38,13 @@ export interface rconConf {
 }
 
 export const rconConf = Schema.object({
+  rconEnable: Schema.boolean().default(true)
+  .description('开启RCON功能'),
   rconServerHost: Schema.string().default('127.0.0.1')
   .description('rcon服务器地址'),
   rconServerPort: Schema.string().default('25575')
   .description('rcon服务器地址端口'),
-  rconPassword: Schema.string()
+  rconPassword: Schema.string().role('secret')
   .description('rcon服务器的密码(推荐设置)'),
   alluser: Schema.boolean().default(false)
   .description('所有用户可用(开启后下面的配置失效)'),
@@ -56,6 +61,7 @@ export interface Config {
   sendToChannel: string[],
   chatOnly: boolean,
   toGBK: boolean,
+  debugger: boolean,
 }
 
 export const Config = Schema.object({
@@ -66,7 +72,9 @@ export const Config = Schema.object({
   chatOnly: Schema.boolean().default(false)
   .description('仅接收聊天消息'),
   toGBK: Schema.boolean().default(false)
-  .description("接收消息转为gbk")
+  .description("接收消息转为gbk"),
+  debugger: Schema.boolean().default(false)
+  .description('打开调试模式，查看发送的群组信息是否正确'),
 })
 
 declare module 'koishi' {
@@ -85,7 +93,7 @@ export async function apply(ctx: Context, cfg: Config) {
     password: cfg.RCON.rconPassword,
   });
   const client = net.createConnection(cfg.socket.socketServerPort, cfg.socket.socketServerHost);
-  let sendChannel = cfg.sendToChannel;
+  let sendChannel = cfg.sendToChannel
   // 监听连接建立事件
   client.on('connect', () => {
     // 发送数据到服务端
@@ -119,42 +127,53 @@ export async function apply(ctx: Context, cfg: Config) {
       logger.success(`socket已连接至${cfg.socket.socketServerHost}:${cfg.socket.socketServerPort}`);
   })
 
-  ctx.on('minecraft-sync-msg/socket-getdata', (data)=> {
+  ctx.on('minecraft-sync-msg/socket-getdata',async (data)=> {
     if (data && (cfg.chatOnly? data.startsWith("[聊天信息]>>"):true)) {
       data = data.replace('[聊天信息]>> ','').replaceAll(/§./g,'');
       var msg = (data.match(/<at id=(.*)\/>/gi) || data.match(/<image url=(.*)\/>/gi))?
         h.unescape(data):data;
-      ctx.broadcast(sendChannel,msg,false)
-      logger.info('收到socket服务端消息<< '+data)
+      logger.info('收到socket服务端消息<< '+data);
+      console.log(`${sendChannel}`)
+      ctx.bots.forEach(async (bot: Bot) => {
+        const channels = sendChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
+        cfg.debugger? logger.debug(`发送平台${bot.platform}>>发送群组${channels}>>配置群组${cfg.sendToChannel}`):'';
+        bot.broadcast(channels, msg, 0);
+      });
     }
   })
 
   ctx.on('minecraft-sync-msg/socket-disconnect',(disconnect)=>{
     if (disconnect) 
-      ctx.broadcast(sendChannel,'Socket断开连接！',false)
+      ctx.broadcast(sendChannel,'Socket断开连接！')
   })
 
   ctx.on('minecraft-sync-msg/socket-error',(err)=>{
     if (err) 
-      ctx.broadcast(sendChannel,'Socket连接失败,请重启插件!',false)
+      ctx.broadcast(sendChannel,'Socket连接失败,请重启插件!')
   })
 
-  try {
-    await connectToRcon(rcon);
-  } catch(err) {
-    logger.error('RCON服务器连接失败');
+  if (cfg.RCON.rconEnable) {
+    try {
+      await connectToRcon(rcon);
+    } catch(err) {
+      logger.error('RCON服务器连接失败');
+    }
   }
 
-  ctx.on('message', async (session)=>{
+  ctx.on('message', async (session) => {
   if (cfg.sendToChannel.includes(`${session.platform}:${session.channelId}`) || session.platform=="sandbox") {
     var passbyCmd:String[] = ["tps","TPS","服务器信息","server_info"];
     if (passbyCmd.includes(session.content)) client.write(`${session.content}\n`);
-    if ((session.content.startsWith('.#') || session.content.startsWith('。#')) && session.content != '.#' &&  session.content != '。#') {
+    if (session.content.match(/(。|.)#/gi)) {
+      logger.info("Enter the if")
       var msg:String = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll('.#','').replaceAll('。#','');
-      client.write(`[${session.username}] ${msg} \n`);
+      try {
+        client.write(`[${session.username}] ${msg} \n`);
+        logger.info(`[minecraft-sync-msg] 已将消息发送至Socket服务端`);
+      } catch (err) { logger.error(`[minecraft-sync-msg] 消息发送到Socket服务端失败`) }
     }
 
-    if ((session.content.startsWith('#/')) && session.content != '#/') {
+    if ((session.content.startsWith('#/')) && session.content != '#/' && cfg.RCON.rconEnable) {
       var cmd:string = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll('#/','');
       if (cfg.RCON.alluser) var res = await sendRconCommand(rcon,cmd);
       else {
