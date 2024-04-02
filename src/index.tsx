@@ -9,7 +9,9 @@ const Rcon = require('rcon-client').Rcon;
 export const name = 'minecraft-sync-msg'
 
 export const usage = `
-使用详情查看 [音铃的博客](https://blog.iin0.cn/views/myblog/mc/koishiandmc.html)
+使用详情查看 [音铃的博客](https://blog.iin0.cn/views/myblog/mc/koishiandmc.html)  
+*** 注意 ***  
+命令发送前缀和消息发送前缀不能相同
 `
 
 const logger = new Logger(name);
@@ -62,6 +64,8 @@ export interface Config {
   chatOnly: boolean,
   toGBK: boolean,
   debugger: boolean,
+  sendprefix: string,
+  cmdprefix: string,
 }
 
 export const Config = Schema.object({
@@ -75,6 +79,10 @@ export const Config = Schema.object({
   .description("接收消息转为gbk"),
   debugger: Schema.boolean().default(false)
   .description('打开调试模式，查看发送的群组信息是否正确'),
+  sendprefix: Schema.string().default('.#')
+  .description("消息发送前缀（不可与命令发送前缀相同）"),
+  cmdprefix: Schema.string().default('./')
+  .description("命令发送前缀（不可与消息发送前缀相同）"),
 })
 
 declare module 'koishi' {
@@ -164,17 +172,16 @@ export async function apply(ctx: Context, cfg: Config) {
   if (cfg.sendToChannel.includes(`${session.platform}:${session.channelId}`) || session.platform=="sandbox") {
     var passbyCmd:String[] = ["tps","TPS","服务器信息","server_info"];
     if (passbyCmd.includes(session.content)) client.write(`${session.content}\n`);
-    if (session.content.match(/(。|.)#/gi)) {
-      logger.info("Enter the if")
-      var msg:String = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll('.#','').replaceAll('。#','');
+    if ((session.content.startsWith(cfg.sendprefix)) && session.content != cfg.sendprefix) {
+      var msg:String = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll(cfg.sendprefix,'');
       try {
         client.write(`[${session.username}] ${msg} \n`);
         logger.info(`[minecraft-sync-msg] 已将消息发送至Socket服务端`);
       } catch (err) { logger.error(`[minecraft-sync-msg] 消息发送到Socket服务端失败`) }
     }
 
-    if ((session.content.startsWith('#/')) && session.content != '#/' && cfg.RCON.rconEnable) {
-      var cmd:string = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll('#/','');
+    if ((session.content.startsWith(cfg.cmdprefix)) && session.content != cfg.cmdprefix && cfg.RCON.rconEnable) {
+      var cmd:string = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll(cfg.cmdprefix,'');
       if (cfg.RCON.alluser) var res = await sendRconCommand(rcon,cmd);
       else {
         if (cfg.RCON.superuser.includes(session.userId)) {
