@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-minecraft-sync-msg",
   "description": "一个简易socket通信实现mc消息互联",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "homepage": "https://blog.iin0.cn/views/myblog/mc/koishiandmc.html",
@@ -42,10 +42,10 @@
   },
   "dependencies": {
     "iconv-lite": "^0.6.3",
-    "rcon-client": "^4.2.3"
+    "rcon-client": "^4.2.4"
   },
   "devDependencies": {
     "iconv-lite": "^0.6.3",
-    "rcon-client": "^4.2.3"
+    "rcon-client": "^4.2.4"
   }
 }

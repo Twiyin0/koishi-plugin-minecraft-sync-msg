@@ -1,6 +1,4 @@
-import { Session } from 'inspector';
 import { Context, Schema, Logger, h, Bot } from 'koishi'
-import { config } from 'process';
 
 const iconv = require('iconv-lite');
 const net = require('net');
@@ -19,13 +17,16 @@ const logger = new Logger(name);
 export interface socketConf {
   socketServerHost: String,
   socketServerPort: String
+  socketServerToken: String,
 }
 
 export const socketConf = Schema.object({
   socketServerHost: Schema.string().default('127.0.0.1')
   .description("socket服务器的地址"),
   socketServerPort: Schema.string().default('21354')
-  .description("socket服务器的端口(必填)"),
+  .description("socket服务器的端口"),
+  socketServerToken: Schema.string().default('Token12345')
+  .description("socket服务器的验证Token"),
 })
 
 export interface rconConf {
@@ -105,6 +106,7 @@ export async function apply(ctx: Context, cfg: Config) {
   // 监听连接建立事件
   client.on('connect', () => {
     // 发送数据到服务端
+    if(cfg.socket.socketServerToken) client.write(`${cfg.socket.socketServerToken}\n`);
     client.write("§6客户端已连接!\n");
     ctx.emit('minecraft-sync-msg/socket-connected', true);
   });
