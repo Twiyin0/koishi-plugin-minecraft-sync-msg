@@ -15,12 +15,15 @@ export const usage = `
 const logger = new Logger(name);
 
 export interface socketConf {
+  socketEnabled: Boolean,
   socketServerHost: String,
   socketServerPort: String
   socketServerToken: String,
 }
 
 export const socketConf = Schema.object({
+  socketEnabled: Schema.boolean().default(true)
+  .description("是否启用socket(不启用就不接收消息)"),
   socketServerHost: Schema.string().default('127.0.0.1')
   .description("socket服务器的地址"),
   socketServerPort: Schema.string().default('21354')
@@ -101,12 +104,12 @@ export async function apply(ctx: Context, cfg: Config) {
     port: cfg.RCON.rconServerPort,
     password: cfg.RCON.rconPassword,
   });
-  const client = net.createConnection(cfg.socket.socketServerPort, cfg.socket.socketServerHost);
+  const client = cfg.socket.socketEnabled? net.createConnection(cfg.socket.socketServerPort, cfg.socket.socketServerHost):'';
   let sendChannel = cfg.sendToChannel
   // 监听连接建立事件
   client.on('connect', () => {
     // 发送数据到服务端
-    if(cfg.socket.socketServerToken) client.write(`${cfg.socket.socketServerToken}\n`);
+    if(cfg.socket.socketServerToken && cfg.socket.socketEnabled) client.write(`${cfg.socket.socketServerToken}\n`);
     client.write("§6客户端已连接!\n");
     ctx.emit('minecraft-sync-msg/socket-connected', true);
   });
@@ -131,6 +134,11 @@ export async function apply(ctx: Context, cfg: Config) {
     }
     ctx.emit('minecraft-sync-msg/socket-error', true)
   });
+
+  ctx.on('dispose', () => {
+    client.end();
+    logger.success('socket断开连接!');
+  })
 
   ctx.on('minecraft-sync-msg/socket-connected', (connected)=>{
     if (connected)
@@ -173,8 +181,8 @@ export async function apply(ctx: Context, cfg: Config) {
   ctx.on('message', async (session) => {
   if (cfg.sendToChannel.includes(`${session.platform}:${session.channelId}`) || session.platform=="sandbox") {
     var passbyCmd:String[] = ["tps","TPS","服务器信息","server_info"];
-    if (passbyCmd.includes(session.content)) client.write(`${session.content}\n`);
-    if ((session.content.startsWith(cfg.sendprefix)) && session.content != cfg.sendprefix) {
+    if (passbyCmd.includes(session.content) && cfg.socket.socketEnabled) client.write(`${session.content}\n`);
+    if ((session.content.startsWith(cfg.sendprefix)) && session.content != cfg.sendprefix && cfg.socket.socketEnabled) {
       var msg:String = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll(cfg.sendprefix,'');
       try {
         client.write(`[${session.username}] ${msg} \n`);
