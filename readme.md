@@ -2,12 +2,20 @@
 
 [![npm](https://img.shields.io/npm/v/koishi-plugin-minecraft-sync-msg?style=flat-square)](https://www.npmjs.com/package/koishi-plugin-minecraft-sync-msg)
 
-使用详情查看 [音铃的博客](https://blog.iin0.cn/views/myblog/mc/koishiandmc.html)
+使用详情查看 [音铃的博客](https://twiyin0.github.io/blogs/myblog/mc/wskoishitomc.html)
 
 **注意**  
 rcon并非完全跟控制台一样所有命令都会有反馈
 
 # CHANGELOG
+## v2.0.0-beta.1
+教程更新为[v2.0](https://twiyin0.github.io/blogs/myblog/mc/wskoishitomc.html)
+### 更新
+* 更新了使用的协议，使用Websocket协议连接mc服务器
+* mc服务端插件更换为[鹊桥](https://github.com/17TheWord/QueQiao)支持插件服与MOD服
+### 优化
+* 优化了配置项的排列
+
 ## v1.1.0
 ### 新增
 * 新增配置项，可以配置是否使用socket发送消息（关闭此项可以仅用RCON）

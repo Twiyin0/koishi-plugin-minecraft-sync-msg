@@ -1,176 +1,114 @@
 import { Context, Schema, Logger, h, Bot } from 'koishi'
-
-const iconv = require('iconv-lite');
-const net = require('net');
-const Rcon = require('rcon-client').Rcon;
+import { WebSocket } from 'ws'
+import { Rcon } from 'rcon-client'
+import { getSubscribedEvents, eventTrans, wsConf, rconConf } from './values'
 
 export const name = 'minecraft-sync-msg'
 
 export const usage = `
-使用详情查看 [音铃的博客](https://blog.iin0.cn/views/myblog/mc/koishiandmc.html)  
+Socket协议(<=v1.1.0)使用详情查看 [v1.1.0](https://twiyin0.github.io/blogs/myblog/mc/koishiandmc.html)  
+Websocket(>=v2.0.0-beta.1) 使用详情请看 [v2.0](https://twiyin0.github.io/blogs/myblog/mc/wskoishitomc.html)  
 *** 注意 ***  
 命令发送前缀和消息发送前缀不能相同
 `
 
 const logger = new Logger(name);
 
-export interface socketConf {
-  socketEnabled: Boolean,
-  socketServerHost: String,
-  socketServerPort: String
-  socketServerToken: String,
-}
-
-export const socketConf = Schema.object({
-  socketEnabled: Schema.boolean().default(true)
-  .description("是否启用socket(不启用就不接收消息)"),
-  socketServerHost: Schema.string().default('127.0.0.1')
-  .description("socket服务器的地址"),
-  socketServerPort: Schema.string().default('21354')
-  .description("socket服务器的端口"),
-  socketServerToken: Schema.string().default('Token12345')
-  .description("socket服务器的验证Token"),
-})
-
-export interface rconConf {
-  rconEnable: boolean,
-  rconServerHost: String,
-  rconServerPort: String,
-  rconPassword: String,
-  alluser: boolean,
-  superuser: string[],
-  commonCmd: string[],
-  cannotCmd: string[],
-}
-
-export const rconConf = Schema.object({
-  rconEnable: Schema.boolean().default(true)
-  .description('开启RCON功能'),
-  rconServerHost: Schema.string().default('127.0.0.1')
-  .description('rcon服务器地址'),
-  rconServerPort: Schema.string().default('25575')
-  .description('rcon服务器地址端口'),
-  rconPassword: Schema.string().role('secret')
-  .description('rcon服务器的密码(推荐设置)'),
-  alluser: Schema.boolean().default(false)
-  .description('所有用户可用(开启后下面的配置失效)'),
-  superuser: Schema.array(String)
-  .description('超级用户的ID，可以使用RCON所有命令'),
-  commonCmd: Schema.array(String).default(['list','spigot:tps'])
-  .description('普通用户可以使用的命令'),
-  cannotCmd: Schema.array(String).default(['restart','stop'])
-})
-
-export interface Config {
-  socket: socketConf,
-  RCON: rconConf,
+export interface Config extends wsConf, rconConf {
   sendToChannel: string[],
-  chatOnly: boolean,
-  toGBK: boolean,
-  debugger: boolean,
   sendprefix: string,
   cmdprefix: string,
+  hideConnect: boolean
 }
 
-export const Config = Schema.object({
-  socket: socketConf,
-  RCON: rconConf,
-  sendToChannel: Schema.array(String)
-  .description('消息发送到目标群组'),
-  chatOnly: Schema.boolean().default(false)
-  .description('仅接收聊天消息'),
-  toGBK: Schema.boolean().default(false)
-  .description("接收消息转为gbk"),
-  debugger: Schema.boolean().default(false)
-  .description('打开调试模式，查看发送的群组信息是否正确'),
-  sendprefix: Schema.string().default('.#')
-  .description("消息发送前缀（不可与命令发送前缀相同）"),
-  cmdprefix: Schema.string().default('./')
-  .description("命令发送前缀（不可与消息发送前缀相同）"),
-})
-
-declare module 'koishi' {
-  interface Events {
-    'minecraft-sync-msg/socket-connected'(...args: any[]): void,
-    'minecraft-sync-msg/socket-getdata'(...args: any[]): void,
-    'minecraft-sync-msg/socket-disconnect'(...args: any[]): void,
-    'minecraft-sync-msg/socket-error'(...args: any[]): void,
-  }
-}
+export const Config: Schema<Config> = Schema.intersect([
+  wsConf,
+  rconConf,
+  Schema.object({
+    sendToChannel: Schema.array(String)
+    .description('消息发送到目标群组'),
+    sendprefix: Schema.string().default('.#')
+    .description("消息发送前缀（不可与命令发送前缀相同）"),
+    cmdprefix: Schema.string().default('./')
+    .description("命令发送前缀（不可与消息发送前缀相同）"),
+    hideConnect: Schema.boolean().default(true).description('关闭连接成功/失败提示')
+  }).description("基础配置")
+] as const)
 
 export async function apply(ctx: Context, cfg: Config) {
   const rcon = new Rcon({
-    host: cfg.RCON.rconServerHost,
-    port: cfg.RCON.rconServerPort,
-    password: cfg.RCON.rconPassword,
-  });
-  const client = cfg.socket.socketEnabled? net.createConnection(cfg.socket.socketServerPort, cfg.socket.socketServerHost):'';
-  let sendChannel = cfg.sendToChannel
-  // 监听连接建立事件
-  client.on('connect', () => {
-    // 发送数据到服务端
-    if(cfg.socket.socketServerToken && cfg.socket.socketEnabled) client.write(`${cfg.socket.socketServerToken}\n`);
-    client.write("§6客户端已连接!\n");
-    ctx.emit('minecraft-sync-msg/socket-connected', true);
+    host: cfg.rconServerHost,
+    port: cfg.rconServerPort,
+    password: cfg.rconPassword,
   });
 
-  // 监听从服务端接收到的数据
-  client.on('data', (data) => {
-    const decodemsg = cfg.toGBK? iconv.decode(data, 'gbk'): data.toString('utf-8');
-    // 处理接收到的数据，可以触发自定义事件
-    ctx.emit('minecraft-sync-msg/socket-getdata', decodemsg);
-  });
+  const headers = {
+    "x-self-name": cfg.serverName,
+    "Authorization": `Bearer ${cfg.Token}`,
+    "x-client-origin": "koishi"
+  };
 
-  // 监听连接关闭事件
-  client.on('close', () => {
-    ctx.emit('minecraft-sync-msg/socket-disconnect', true)
-  });
-
-  // 监听连接错误事件
-  client.on('error', (err) => {
-    logger.error('Socket连接错误:', err);
-    if (err.code === 'ECONNREFUSED') {
-      logger.error('Socket连接被服务器拒绝');
-    }
-    ctx.emit('minecraft-sync-msg/socket-error', true)
+  const ws = new WebSocket(`ws://${cfg.wsHost}:${cfg.wsPort}/minecraft/ws`, {
+    headers: headers
   });
 
   ctx.on('dispose', () => {
-    client.end();
-    logger.success('socket断开连接!');
+    ws.close();
+    logger.success('正常与websocket服务器断开连接!');
   })
 
-  ctx.on('minecraft-sync-msg/socket-connected', (connected)=>{
-    if (connected)
-      logger.success(`socket已连接至${cfg.socket.socketServerHost}:${cfg.socket.socketServerPort}`);
-  })
-
-  ctx.on('minecraft-sync-msg/socket-getdata',async (data)=> {
-    if (data && (cfg.chatOnly? data.startsWith("[聊天信息]>>"):true)) {
-      data = data.replace('[聊天信息]>> ','').replaceAll(/§./g,'');
-      var msg = (data.match(/<at id=(.*)\/>/gi) || data.match(/<image url=(.*)\/>/gi))?
-        h.unescape(data):data;
-      logger.info('收到socket服务端消息<< '+data);
-      console.log(`${sendChannel}`)
-      ctx.bots.forEach(async (bot: Bot) => {
-        const channels = sendChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
-        cfg.debugger? logger.debug(`发送平台${bot.platform}>>发送群组${channels}>>配置群组${cfg.sendToChannel}`):'';
-        bot.broadcast(channels, msg, 0);
-      });
+  ws.on('open', function open() {
+    logger.info('成功连上websocket服务器');
+    if (!cfg.hideConnect) ctx.bots.forEach(async (bot: Bot) => {
+      const channels = cfg.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
+      bot.broadcast(channels, "Websocket服务器连接成功!", 0);
+    });
+    let msgData = {
+      "api": "send_msg",
+      data: {
+        "message": {
+          type: "text",
+          data: {
+            text: extractAndRemoveColor(cfg.joinMsg).output,
+            color: extractAndRemoveColor(cfg.joinMsg).color? extractAndRemoveColor(cfg.joinMsg).color : "gold"
+          }
+        }
+      }
     }
+    // 发送消息示例
+    ws.send(JSON.stringify(msgData));
+  });
+
+  ws.on('message', async (buffer)=> {
+    const data = JSON.parse(buffer.toString())
+    let sendMsg = getSubscribedEvents(cfg.event).includes(data.event_name)? `[${data.server_name}](${eventTrans[data.event_name].name}) ${eventTrans[data.event_name].action? data.player?.nickname+' ':''}${(eventTrans[data.event_name].action? eventTrans[data.event_name].action+' ':'')}${data.message? data.message:''}`:''
+    sendMsg = h.unescape(sendMsg).replaceAll('&amp;','&').replaceAll(/<\/?template>/gi,'').replaceAll(/§./g,'')
+    if(data.server_name)
+      ctx.bots.forEach(async (bot: Bot) => {
+        const channels = cfg.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
+        sendMsg? bot.broadcast(channels, sendMsg, 0):'';
+      });
   })
 
-  ctx.on('minecraft-sync-msg/socket-disconnect',(disconnect)=>{
-    if (disconnect) 
-      ctx.broadcast(sendChannel,'Socket断开连接！')
-  })
+  // 连接关闭时的回调
+  ws.on('close', function close() {
+    if (!cfg.hideConnect) ctx.bots.forEach(async (bot: Bot) => {
+      const channels = cfg.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
+      bot.broadcast(channels, "与Websocket服务器断开连接!", 0);
+    });
+    logger.error('非正常与Websocket服务器断开连接!')
+  });
 
-  ctx.on('minecraft-sync-msg/socket-error',(err)=>{
-    if (err) 
-      ctx.broadcast(sendChannel,'Socket连接失败,请重启插件!')
-  })
+  // 连接错误时的回调
+  ws.on('error', function error(err) {
+    ctx.bots.forEach(async (bot: Bot) => {
+      const channels = cfg.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
+      bot.broadcast(channels, "与Websocket服务器断通信时发生错误!", 0);
+    });
+    logger.error('与Websocket服务器断通信时发生错误!'+err)
+  });
 
-  if (cfg.RCON.rconEnable) {
+  if (cfg.rconEnable) {
     try {
       await connectToRcon(rcon);
     } catch(err) {
@@ -180,26 +118,36 @@ export async function apply(ctx: Context, cfg: Config) {
 
   ctx.on('message', async (session) => {
   if (cfg.sendToChannel.includes(`${session.platform}:${session.channelId}`) || session.platform=="sandbox") {
-    var passbyCmd:String[] = ["tps","TPS","服务器信息","server_info"];
-    if (passbyCmd.includes(session.content) && cfg.socket.socketEnabled) client.write(`${session.content}\n`);
-    if ((session.content.startsWith(cfg.sendprefix)) && session.content != cfg.sendprefix && cfg.socket.socketEnabled) {
-      var msg:String = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll(cfg.sendprefix,'');
+    if ((session.content.startsWith(cfg.sendprefix)) && session.content != cfg.sendprefix) {
+      let msg:string = session.content.replaceAll('&amp;', '&').replaceAll(/<\/?template>/gi,'').replaceAll(cfg.sendprefix,'');
       try {
-        client.write(`[${session.username}] ${msg} \n`);
-        logger.info(`[minecraft-sync-msg] 已将消息发送至Socket服务端`);
-      } catch (err) { logger.error(`[minecraft-sync-msg] 消息发送到Socket服务端失败`) }
+        let msgData = {
+          "api": "send_msg",
+          data: {
+            "message": {
+              type: "text",
+              data: {
+                text: `(${session.platform})[${session.event.user.name}] `+extractAndRemoveColor(msg).output,
+                color: extractAndRemoveColor(msg).color? extractAndRemoveColor(msg).color : "white"
+              }
+            }
+          }
+        }
+        // 发送消息示例
+        ws.send(JSON.stringify(msgData));
+      } catch (err) { logger.error(`[minecraft-sync-msg] 消息发送到WebSocket服务端失败`) }
     }
 
-    if ((session.content.startsWith(cfg.cmdprefix)) && session.content != cfg.cmdprefix && cfg.RCON.rconEnable) {
+    if ((session.content.startsWith(cfg.cmdprefix)) && session.content != cfg.cmdprefix && cfg.rconEnable) {
       var cmd:string = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll(cfg.cmdprefix,'');
-      if (cfg.RCON.alluser) var res = await sendRconCommand(rcon,cmd);
+      if (cfg.alluser) var res = await sendRconCommand(rcon,cmd);
       else {
-        if (cfg.RCON.superuser.includes(session.userId)) {
-          var res = cfg.RCON.cannotCmd.includes(cmd)? '危险命令，禁止使用' : await sendRconCommand(rcon,cmd);
+        if (cfg.superuser.includes(session.userId)) {
+          var res = cfg.cannotCmd.includes(cmd)? '危险命令，禁止使用' : await sendRconCommand(rcon,cmd);
           res = res? res:'该命令无反馈'
         }
-        else if (cfg.RCON.commonCmd.includes(cmd)) {
-          var res = cfg.RCON.cannotCmd.includes(cmd)? '危险命令，禁止使用' : await sendRconCommand(rcon,cmd);
+        else if (cfg.commonCmd.includes(cmd)) {
+          var res = cfg.cannotCmd.includes(cmd)? '危险命令，禁止使用' : await sendRconCommand(rcon,cmd);
           res = res? res:'该命令无反馈'
         }
         else var callbk = '无权使用该命令'
@@ -227,4 +175,18 @@ async function sendRconCommand(rcon:any, command:String) {
   } catch (err) {
     logger.error('发送RCON命令时发生错误：', err);
   }
+}
+
+// 其他功能函数
+function extractAndRemoveColor(input: string): { output: string, color: string } {
+  const regex = /&(\w+)&/;
+  const match = input.match(regex);
+
+  if (match) {
+      const color = match[1];
+      const output = input.replace(regex, '');
+      return { output, color };
+  }
+
+  return { output: input, color: '' };
 }
