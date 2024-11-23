@@ -12,6 +12,10 @@
 rcon并非完全跟控制台一样所有命令都会有反馈
 
 # CHANGELOG
+## v2.0.0-beta.3
+### 修复
+* 修复开启插件会报错`TypeError: input is not iterable`的问题
+
 ## v2.0.0-beta.2
 ### 更新
 * 由于fabric与forge的监听事件与spigot不同，因此对其进行了映射，不过需要注意的是`forge`不支持`PlayerCommandPreprocessEvent`事件，即使订阅了该事件也无法监听

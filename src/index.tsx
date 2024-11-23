@@ -81,7 +81,7 @@ export async function apply(ctx: Context, cfg: Config) {
 
   ws.on('message', async (buffer)=> {
     const data = JSON.parse(buffer.toString())
-    let eventName = getListeningEvent(data.event_name)
+    let eventName = data.event_name? getListeningEvent(data.event_name):'';
     let sendMsg = getSubscribedEvents(cfg.event).includes(eventName)? `[${data.server_name}](${eventTrans[eventName].name}) ${eventTrans[eventName].action? data.player?.nickname+' ':''}${(eventTrans[eventName].action? eventTrans[eventName].action+' ':'')}${data.message? data.message:''}`:''
     sendMsg = h.unescape(sendMsg).replaceAll('&amp;','&').replaceAll(/<\/?template>/gi,'').replaceAll(/§./g,'')
     if(data.server_name)
