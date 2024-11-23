@@ -2,12 +2,11 @@ import { Schema } from 'koishi'
 
 // 放在主逻辑里面很碍眼的东西
 export enum mcEvent {
-    // spigot
-    AsyncPlayerChatEvent = 1,
-    PlayerCommandPreprocessEvent = 1 * 10,
-    PlayerDeathEvent = 1 * 100,
-    PlayerJoinEvent = 1 * 1000,
-    PlayerQuitEvent = 1 * 10000,
+    AsyncPlayerChatEvent = 1 << 0,
+    PlayerCommandPreprocessEvent = 1 << 1,
+    PlayerDeathEvent = 1 << 2,
+    PlayerJoinEvent = 1 << 3,
+    PlayerQuitEvent = 1 << 4
 }
 
 export interface wsConf {
@@ -86,13 +85,14 @@ export const eventTrans = {
 }
 
 // 事件映射
-export function getSubscribedEvents(input: number | mcEvent): string[] {
+export function getSubscribedEvents(binaryInput: number): string[] {
     const subscribedEvents: string[] = [];
     const eventValues = Object.values(mcEvent).filter(value => typeof value === 'number') as number[];
+    const eventNames = Object.keys(mcEvent).filter(key => isNaN(Number(key)));
 
     for (let i = 0; i < eventValues.length; i++) {
-        if ((input & eventValues[i]) !== 0) {
-            subscribedEvents.push(eventList[i]);
+        if ((binaryInput & eventValues[i]) !== 0) {
+            subscribedEvents.push(eventNames[i]);
         }
     }
 

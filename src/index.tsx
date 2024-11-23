@@ -116,6 +116,11 @@ export async function apply(ctx: Context, cfg: Config) {
       logger.error('RCON服务器连接失败');
     }
   }
+  ctx.command('mcTest').action(async ({session})=>{
+    console.log(cfg.event);
+    console.log(getSubscribedEvents(cfg.event));
+    return getSubscribedEvents(cfg.event);
+  })
 
   ctx.on('message', async (session) => {
   if (cfg.sendToChannel.includes(`${session.platform}:${session.channelId}`) || session.platform=="sandbox") {

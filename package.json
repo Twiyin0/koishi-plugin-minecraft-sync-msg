@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-minecraft-sync-msg",
   "description": "v2.x更换为Websocket协议",
-  "version": "2.0.0-beta.3",
+  "version": "2.0.0-beta.4",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "homepage": "https://blog.iin0.cn/views/myblog/mc/koishiandmc.html",

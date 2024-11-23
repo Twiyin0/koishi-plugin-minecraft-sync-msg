@@ -12,6 +12,10 @@
 rcon并非完全跟控制台一样所有命令都会有反馈
 
 # CHANGELOG
+## v2.0.0-beta.4
+### 修复
+* 修复事件无法正常订阅的问题
+
 ## v2.0.0-beta.3
 ### 修复
 * 修复开启插件会报错`TypeError: input is not iterable`的问题
