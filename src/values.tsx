@@ -2,11 +2,12 @@ import { Schema } from 'koishi'
 
 // 放在主逻辑里面很碍眼的东西
 export enum mcEvent {
+    // spigot
     AsyncPlayerChatEvent = 1,
-    PlayerCommandPreprocessEvent = 1*10,
-    PlayerDeathEvent = 1*100,
-    PlayerJoinEvent = 1*1000,
-    PlayerQuitEvent = 1*1000
+    PlayerCommandPreprocessEvent = 1 * 10,
+    PlayerDeathEvent = 1 * 100,
+    PlayerJoinEvent = 1 * 1000,
+    PlayerQuitEvent = 1 * 10000,
 }
 
 export interface wsConf {
@@ -96,4 +97,44 @@ export function getSubscribedEvents(input: number | mcEvent): string[] {
     }
 
     return subscribedEvents;
+}
+
+// 事件映射变量
+const eventMap = {
+    AsyncPlayerChatEvent: 'AsyncPlayerChatEvent',
+    ServerMessageEvent: 'AsyncPlayerChatEvent',
+    ServerChatEvent: 'AsyncPlayerChatEvent',
+
+    PlayerCommandPreprocessEvent: 'PlayerCommandPreprocessEvent',
+    ServerCommandMessageEvent: 'PlayerCommandPreprocessEvent',
+
+    PlayerDeathEvent: 'PlayerDeathEvent',
+    ServerLivingEntityAfterDeathEvent: 'PlayerDeathEvent',
+    PlayerRespawnEvent: 'PlayerDeathEvent',
+
+    PlayerJoinEvent: 'PlayerJoinEvent',
+    ServerPlayConnectionJoinEvent: 'PlayerJoinEvent',
+    PlayerLoggedInEvent: 'PlayerJoinEvent',
+
+    PlayerQuitEvent: 'PlayerQuitEvent',
+    ServerPlayConnectionDisconnectEvent: 'PlayerQuitEvent',
+    PlayerLoggedOutEvent: 'PlayerQuitEvent',
+};
+
+// 监听映射
+export function getListeningEvent(input: string | string[]): string {
+    if (typeof input === 'string') {
+        input = [input];
+    }
+
+    const uniqueEvents = new Set<string>();
+
+    for (const event of input) {
+        if (eventMap[event]) {
+            uniqueEvents.add(eventMap[event]);
+        }
+    }
+
+    // 如果有多个映射结果，返回第一个
+    return Array.from(uniqueEvents)[0];
 }

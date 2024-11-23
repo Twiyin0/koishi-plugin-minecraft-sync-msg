@@ -1,15 +1,15 @@
 import { Context, Schema, Logger, h, Bot } from 'koishi'
 import { WebSocket } from 'ws'
 import { Rcon } from 'rcon-client'
-import { getSubscribedEvents, eventTrans, wsConf, rconConf } from './values'
+import { getListeningEvent, getSubscribedEvents, eventTrans, wsConf, rconConf } from './values'
 
 export const name = 'minecraft-sync-msg'
 
 export const usage = `
-Socket协议(<=v1.1.0)使用详情查看 [v1.1.0](https://twiyin0.github.io/blogs/myblog/mc/koishiandmc.html)  
-Websocket(>=v2.0.0-beta.1) 使用详情请看 [v2.0](https://twiyin0.github.io/blogs/myblog/mc/wskoishitomc.html)  
+插件使用详情请看 [v2.x](https://twiyin0.github.io/blogs/myblog/mc/wskoishitomc.html)  
 *** 注意 ***  
-命令发送前缀和消息发送前缀不能相同
+* 命令发送前缀(不能为空)和消息发送前缀(可以为空)不能相同  
+* forge端不支持PlayerCommandPreprocessEvent事件
 `
 
 const logger = new Logger(name);
@@ -81,7 +81,8 @@ export async function apply(ctx: Context, cfg: Config) {
 
   ws.on('message', async (buffer)=> {
     const data = JSON.parse(buffer.toString())
-    let sendMsg = getSubscribedEvents(cfg.event).includes(data.event_name)? `[${data.server_name}](${eventTrans[data.event_name].name}) ${eventTrans[data.event_name].action? data.player?.nickname+' ':''}${(eventTrans[data.event_name].action? eventTrans[data.event_name].action+' ':'')}${data.message? data.message:''}`:''
+    let eventName = getListeningEvent(data.event_name)
+    let sendMsg = getSubscribedEvents(cfg.event).includes(eventName)? `[${data.server_name}](${eventTrans[eventName].name}) ${eventTrans[eventName].action? data.player?.nickname+' ':''}${(eventTrans[eventName].action? eventTrans[eventName].action+' ':'')}${data.message? data.message:''}`:''
     sendMsg = h.unescape(sendMsg).replaceAll('&amp;','&').replaceAll(/<\/?template>/gi,'').replaceAll(/§./g,'')
     if(data.server_name)
       ctx.bots.forEach(async (bot: Bot) => {
@@ -138,7 +139,7 @@ export async function apply(ctx: Context, cfg: Config) {
       } catch (err) { logger.error(`[minecraft-sync-msg] 消息发送到WebSocket服务端失败`) }
     }
 
-    if ((session.content.startsWith(cfg.cmdprefix)) && session.content != cfg.cmdprefix && cfg.rconEnable) {
+    if ((session.content.startsWith(cfg.cmdprefix)) && session.content != cfg.cmdprefix && cfg.rconEnable && cfg.cmdprefix) {
       var cmd:string = session.content.replaceAll('&amp;','§').replaceAll('&','§').replaceAll(cfg.cmdprefix,'');
       if (cfg.alluser) var res = await sendRconCommand(rcon,cmd);
       else {
