@@ -2,6 +2,7 @@ import { Context, Schema, Logger, h, Bot } from 'koishi'
 import { WebSocket } from 'ws'
 import { Rcon } from 'rcon-client'
 import { getListeningEvent, getSubscribedEvents, eventTrans, wsConf, rconConf } from './values'
+import mcWss from './mcwss'
 
 export const name = 'minecraft-sync-msg'
 
@@ -10,6 +11,7 @@ export const usage = `
 *** 注意 ***  
 * 命令发送前缀(不能为空)和消息发送前缀(可以为空)不能相同  
 * forge端不支持PlayerCommandPreprocessEvent事件
+* * 原版端仅支持聊天、加入、离开事件
 `
 
 const logger = new Logger(name);
@@ -36,6 +38,7 @@ export const Config: Schema<Config> = Schema.intersect([
 ] as const)
 
 export async function apply(ctx: Context, cfg: Config) {
+  let ws:WebSocket;
   const rcon = new Rcon({
     host: cfg.rconServerHost,
     port: cfg.rconServerPort,
@@ -47,17 +50,24 @@ export async function apply(ctx: Context, cfg: Config) {
     "Authorization": `Bearer ${cfg.Token}`,
     "x-client-origin": "koishi"
   };
+  let fork:any;
 
-  const ws = new WebSocket(`ws://${cfg.wsHost}:${cfg.wsPort}/minecraft/ws`, {
-    headers: headers
-  });
+  if (cfg.wsServer == '服务端') {
+    fork = ctx.plugin(mcWss, cfg);
+    return;
+  } else {
+    ws = new WebSocket(`ws://${cfg.wsHost}:${cfg.wsPort}/minecraft/ws`, {
+      headers: headers
+    });
+  }
 
-  ctx.on('dispose', () => {
-    ws.close();
-    logger.success('正常与websocket服务器断开连接!');
+  ctx.on('dispose', async () => {
+    fork?.dispose()
+    fork? ctx.registry.delete(mcWss):undefined;
+    ws?.close();
   })
 
-  ws.on('open', function open() {
+  ws?.on('open', function open() {
     logger.info('成功连上websocket服务器');
     if (!cfg.hideConnect) ctx.bots.forEach(async (bot: Bot) => {
       const channels = cfg.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
@@ -76,10 +86,10 @@ export async function apply(ctx: Context, cfg: Config) {
       }
     }
     // 发送消息示例
-    ws.send(JSON.stringify(msgData));
+    ws?.send(JSON.stringify(msgData));
   });
 
-  ws.on('message', async (buffer)=> {
+  ws?.on('message', async (buffer)=> {
     const data = JSON.parse(buffer.toString())
     let eventName = data.event_name? getListeningEvent(data.event_name):'';
     let sendMsg = getSubscribedEvents(cfg.event).includes(eventName)? `[${data.server_name}](${eventTrans[eventName].name}) ${eventTrans[eventName].action? data.player?.nickname+' ':''}${(eventTrans[eventName].action? eventTrans[eventName].action+' ':'')}${data.message? data.message:''}`:''
@@ -92,17 +102,18 @@ export async function apply(ctx: Context, cfg: Config) {
   })
 
   // 连接关闭时的回调
-  ws.on('close', function close() {
+  ws?.on('close', async () => {
     if (!cfg.hideConnect) ctx.bots.forEach(async (bot: Bot) => {
       const channels = cfg.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
       bot.broadcast(channels, "与Websocket服务器断开连接!", 0);
     });
     logger.error('非正常与Websocket服务器断开连接!')
+    ws = await wsReconnect(cfg,headers) || undefined;
   });
 
   // 连接错误时的回调
-  ws.on('error', function error(err) {
-    ctx.bots.forEach(async (bot: Bot) => {
+  ws?.on('error', function error(err) {
+    if (!cfg.hideConnect) ctx.bots.forEach(async (bot: Bot) => {
       const channels = cfg.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
       bot.broadcast(channels, "与Websocket服务器断通信时发生错误!", 0);
     });
@@ -116,11 +127,13 @@ export async function apply(ctx: Context, cfg: Config) {
       logger.error('RCON服务器连接失败');
     }
   }
-  ctx.command('mcTest').action(async ({session})=>{
-    console.log(cfg.event);
-    console.log(getSubscribedEvents(cfg.event));
-    return getSubscribedEvents(cfg.event);
-  })
+
+  // debug
+  // ctx.command('mcTest').action(async ({session})=>{
+  //   console.log(cfg.event);
+  //   console.log(getSubscribedEvents(cfg.event));
+  //   return getSubscribedEvents(cfg.event);
+  // })
 
   ctx.on('message', async (session) => {
   if (cfg.sendToChannel.includes(`${session.platform}:${session.channelId}`) || session.platform=="sandbox") {
@@ -140,7 +153,7 @@ export async function apply(ctx: Context, cfg: Config) {
           }
         }
         // 发送消息示例
-        ws.send(JSON.stringify(msgData));
+        ws?.send(JSON.stringify(msgData));
       } catch (err) { logger.error(`[minecraft-sync-msg] 消息发送到WebSocket服务端失败`) }
     }
 
@@ -184,7 +197,7 @@ async function sendRconCommand(rcon:any, command:String) {
 }
 
 // 其他功能函数
-function extractAndRemoveColor(input: string): { output: string, color: string } {
+export function extractAndRemoveColor(input: string): { output: string, color: string } {
   const regex = /&(\w+)&/;
   const match = input.match(regex);
 
@@ -195,4 +208,39 @@ function extractAndRemoveColor(input: string): { output: string, color: string }
   }
 
   return { output: input, color: '' };
+}
+
+let reconnectAttempts = 0; // 重连次数计数器
+let reconnectIntervalId: NodeJS.Timeout | null = null; // 用于存储 setInterval 的 ID
+// 重连函数
+async function wsReconnect(cfg: Config, headers:any): Promise<WebSocket | null | undefined> {
+  let ws:WebSocket;
+  if (reconnectIntervalId) return; // 如果已经存在定时器，则不再启动新的定时器
+  reconnectIntervalId = setInterval(() => {
+    if (reconnectAttempts < cfg.maxReconnectCount) {
+      reconnectAttempts++;
+      logger.info(`尝试第 ${reconnectAttempts} 次重连...`);
+      try {
+        ws = new WebSocket(`ws://${cfg.wsHost}:${cfg.wsPort}/minecraft/ws`, {
+        headers: headers
+        });
+        ws.on('error', () => {
+          ws = undefined
+        })
+      } catch (err) {
+        ws = undefined;
+      }
+    } else {
+      logger.error(`已达到最大重连次数 (${cfg.maxReconnectCount} 次)，停止重连。`);
+      clearReconnectInterval(); // 清理重连定时器
+    }
+  }, cfg.maxReconnectInterval);
+  return ws;
+}
+
+function clearReconnectInterval() {
+  if (reconnectIntervalId) {
+    clearInterval(reconnectIntervalId);
+    reconnectIntervalId = null;
+  }
 }

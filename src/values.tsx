@@ -10,27 +10,37 @@ export enum mcEvent {
 }
 
 export interface wsConf {
+    wsServer: boolean | string,
     wsHost: string,
-    wsPort: string | number,
+    wsPort: number,
     Token: string,
     serverName: string,
     joinMsg: string,
     event: mcEvent,
+    maxReconnectCount: number,
+    maxReconnectInterval: number,
 }
-  
+
 export const wsConf = Schema.object({
+    wsServer: Schema.union(['客户端','服务端']).default('客户端')
+    .description("Websocket端选择"),
     wsHost: Schema.string().default('127.0.0.1')
-    .description("websocket服务器的地址"),
-    wsPort: Schema.string().default('8080')
-    .description("websocket服务器的端口"),
+    .description("websocket服务器的地址(服务器监听地址)"),
+    wsPort: Schema.number().default(8080)
+    .description("websocket服务器的端口(服务器监听端口)"),
     Token: Schema.string()
     .description("websocket服务器的验证Token"),
     serverName: Schema.string()
     .description("鹊桥配置文件中对应的server_name"),
-    joinMsg: Schema.string().default("[客户端] 连接成功！").description('连接服务的成功时发送的消息(&颜色单词&可以设置颜色)'),
+    joinMsg: Schema.string().default("[客户端] 连接成功！")
+    .description('连接服务的成功时发送的消息(&颜色单词&可以设置颜色)'),
     event: Schema.bitset(mcEvent).description("选择需要监听的事件"),
-}).collapse().description("Websocket客户端配置")
-  
+    maxReconnectCount: Schema.number().default(20)
+    .description("[仅客户端生效]客户端最大重连次数"),
+    maxReconnectInterval: Schema.number().default(60000)
+    .description("[仅客户端生效]客户端单次重连时间(ms)"),
+}).collapse().description("Websocket配置")
+
 export interface rconConf {
     rconEnable: boolean,
     rconServerHost: string,
@@ -41,7 +51,7 @@ export interface rconConf {
     commonCmd: string[],
     cannotCmd: string[],
 }
-  
+
 export const rconConf = Schema.object({
     rconEnable: Schema.boolean().default(true)
     .description('开启RCON功能'),
@@ -104,6 +114,7 @@ const eventMap = {
     AsyncPlayerChatEvent: 'AsyncPlayerChatEvent',
     ServerMessageEvent: 'AsyncPlayerChatEvent',
     ServerChatEvent: 'AsyncPlayerChatEvent',
+    MinecraftPlayerChatEvent: 'AsyncPlayerChatEvent',
 
     PlayerCommandPreprocessEvent: 'PlayerCommandPreprocessEvent',
     ServerCommandMessageEvent: 'PlayerCommandPreprocessEvent',
@@ -115,10 +126,12 @@ const eventMap = {
     PlayerJoinEvent: 'PlayerJoinEvent',
     ServerPlayConnectionJoinEvent: 'PlayerJoinEvent',
     PlayerLoggedInEvent: 'PlayerJoinEvent',
+    MinecraftPlayerJoinEvent: 'PlayerJoinEvent',
 
     PlayerQuitEvent: 'PlayerQuitEvent',
     ServerPlayConnectionDisconnectEvent: 'PlayerQuitEvent',
     PlayerLoggedOutEvent: 'PlayerQuitEvent',
+    MinecraftPlayerQuitEvent: 'PlayerQuitEvent',
 };
 
 // 监听映射
