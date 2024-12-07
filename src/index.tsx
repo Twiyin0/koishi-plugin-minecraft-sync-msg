@@ -38,7 +38,7 @@ export const Config: Schema<Config> = Schema.intersect([
 ] as const)
 
 export async function apply(ctx: Context, cfg: Config) {
-  let ws:WebSocket;
+  let ws:WebSocket|undefined;
   const rcon = new Rcon({
     host: cfg.rconServerHost,
     port: cfg.rconServerPort,
@@ -107,8 +107,9 @@ export async function apply(ctx: Context, cfg: Config) {
       const channels = cfg.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
       bot.broadcast(channels, "与Websocket服务器断开连接!", 0);
     });
-    logger.error('非正常与Websocket服务器断开连接!')
-    ws = await wsReconnect(cfg,headers) || undefined;
+    logger.error('非正常与Websocket服务器断开连接!');
+    ws = undefined;
+    ws = await wsReconnect(cfg, headers) || undefined;
   });
 
   // 连接错误时的回调
@@ -212,21 +213,36 @@ export function extractAndRemoveColor(input: string): { output: string, color: s
 
 let reconnectAttempts = 0; // 重连次数计数器
 let reconnectIntervalId: NodeJS.Timeout | null = null; // 用于存储 setInterval 的 ID
+
 // 重连函数
-async function wsReconnect(cfg: Config, headers:any): Promise<WebSocket | null | undefined> {
-  let ws:WebSocket;
+async function wsReconnect(cfg: Config, headers: any): Promise<WebSocket | null | undefined> {
+  let ws: WebSocket | undefined;
+
   if (reconnectIntervalId) return; // 如果已经存在定时器，则不再启动新的定时器
+
   reconnectIntervalId = setInterval(() => {
     if (reconnectAttempts < cfg.maxReconnectCount) {
       reconnectAttempts++;
       logger.info(`尝试第 ${reconnectAttempts} 次重连...`);
       try {
         ws = new WebSocket(`ws://${cfg.wsHost}:${cfg.wsPort}/minecraft/ws`, {
-        headers: headers
+          headers: headers
         });
+
+        ws.on('open', () => {
+          logger.info('WebSocket 连接成功');
+          clearReconnectInterval(); // 连接成功后清除定时器
+        });
+
         ws.on('error', () => {
-          ws = undefined
-        })
+          ws = undefined;
+        });
+
+        ws.on('close', () => {
+          logger.info('WebSocket 连接关闭，开始重连...');
+          wsReconnect(cfg, headers); // 连接关闭后重新调用重连函数
+        });
+
       } catch (err) {
         ws = undefined;
       }
@@ -235,6 +251,7 @@ async function wsReconnect(cfg: Config, headers:any): Promise<WebSocket | null |
       clearReconnectInterval(); // 清理重连定时器
     }
   }, cfg.maxReconnectInterval);
+
   return ws;
 }
 

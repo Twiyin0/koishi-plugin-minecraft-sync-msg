@@ -115,23 +115,33 @@ const eventMap = {
     ServerMessageEvent: 'AsyncPlayerChatEvent',
     ServerChatEvent: 'AsyncPlayerChatEvent',
     MinecraftPlayerChatEvent: 'AsyncPlayerChatEvent',
+    BaseChatEvent: 'AsyncPlayerChatEvent',
 
     PlayerCommandPreprocessEvent: 'PlayerCommandPreprocessEvent',
     ServerCommandMessageEvent: 'PlayerCommandPreprocessEvent',
+    BasePlayerCommandEvent: 'PlayerCommandPreprocessEvent',
 
     PlayerDeathEvent: 'PlayerDeathEvent',
     ServerLivingEntityAfterDeathEvent: 'PlayerDeathEvent',
     PlayerRespawnEvent: 'PlayerDeathEvent',
+    BaseDeathEvent: 'PlayerDeathEvent',
 
     PlayerJoinEvent: 'PlayerJoinEvent',
     ServerPlayConnectionJoinEvent: 'PlayerJoinEvent',
     PlayerLoggedInEvent: 'PlayerJoinEvent',
     MinecraftPlayerJoinEvent: 'PlayerJoinEvent',
+    BaseJoinEvent: 'PlayerJoinEvent',
 
     PlayerQuitEvent: 'PlayerQuitEvent',
     ServerPlayConnectionDisconnectEvent: 'PlayerQuitEvent',
     PlayerLoggedOutEvent: 'PlayerQuitEvent',
     MinecraftPlayerQuitEvent: 'PlayerQuitEvent',
+    BaseQuitEvent: 'PlayerQuitEvent',
+
+    VelocityDisconnectEvent: 'PlayerQuitEvent',
+    VelocityCommandExecuteEvent: 'PlayerCommandPreprocessEvent',
+    VelocityLoginEvent: 'PlayerJoinEvent',
+    VelocityPlayerChatEvent: 'AsyncPlayerChatEvent',
 };
 
 // 监听映射
