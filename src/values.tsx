@@ -114,27 +114,32 @@ const eventMap = {
     AsyncPlayerChatEvent: 'AsyncPlayerChatEvent',
     ServerMessageEvent: 'AsyncPlayerChatEvent',
     ServerChatEvent: 'AsyncPlayerChatEvent',
+    NeoServerChatEvent: 'AsyncPlayerChatEvent',
     MinecraftPlayerChatEvent: 'AsyncPlayerChatEvent',
     BaseChatEvent: 'AsyncPlayerChatEvent',
 
     PlayerCommandPreprocessEvent: 'PlayerCommandPreprocessEvent',
     ServerCommandMessageEvent: 'PlayerCommandPreprocessEvent',
+    CommandEvent: 'PlayerCommandPreprocessEvent',
+    NeoCommandEvent: 'PlayerCommandPreprocessEvent',
     BasePlayerCommandEvent: 'PlayerCommandPreprocessEvent',
 
-    PlayerDeathEvent: 'PlayerDeathEvent',
+    PlayerDeathEvent: 'PlayerDeathEvent', // Spigot 与 Forge 同名
+    NeoPlayerDeathEvent: 'PlayerDeathEvent',
     ServerLivingEntityAfterDeathEvent: 'PlayerDeathEvent',
-    PlayerRespawnEvent: 'PlayerDeathEvent',
     BaseDeathEvent: 'PlayerDeathEvent',
 
     PlayerJoinEvent: 'PlayerJoinEvent',
     ServerPlayConnectionJoinEvent: 'PlayerJoinEvent',
     PlayerLoggedInEvent: 'PlayerJoinEvent',
+    NeoPlayerLoggedInEvent: 'PlayerJoinEvent',
     MinecraftPlayerJoinEvent: 'PlayerJoinEvent',
     BaseJoinEvent: 'PlayerJoinEvent',
 
     PlayerQuitEvent: 'PlayerQuitEvent',
     ServerPlayConnectionDisconnectEvent: 'PlayerQuitEvent',
     PlayerLoggedOutEvent: 'PlayerQuitEvent',
+    NeoPlayerLoggedOutEvent: 'PlayerQuitEvent',
     MinecraftPlayerQuitEvent: 'PlayerQuitEvent',
     BaseQuitEvent: 'PlayerQuitEvent',
 
