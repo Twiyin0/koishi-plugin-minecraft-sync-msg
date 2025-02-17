@@ -12,6 +12,11 @@
 rcon并非完全跟控制台一样所有命令都会有反馈
 
 # CHANGELOG
+## v2.0.3
+### 更新
+感谢[@17TheWord](https://github.com/17TheWord)大佬的支持
+* 映射了NeoForge的事件，感谢[@17TheWord](https://github.com/17TheWord)大佬的PR
+
 ## v2.0.2
 ### 修复
 * 修复重连无法接收消息的问题（log可能会跳多次重连，但这些都不重要，mc的消息只会发送一条）
