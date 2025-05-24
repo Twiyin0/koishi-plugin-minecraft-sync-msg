@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-minecraft-sync-msg",
   "description": "v2.x更换为Websocket协议",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "homepage": "https://blog.iin0.cn/views/myblog/mc/koishiandmc.html",
@@ -36,11 +36,11 @@
     "koishi": "^4.14.0"
   },
   "dependencies": {
-    "rcon-client": "^4.2.4",
-    "ws": "^8.18.0"
+    "rcon-client": "^4.2.5",
+    "ws": "^8.18.2"
   },
   "devDependencies": {
-    "rcon-client": "^4.2.4",
-    "ws": "^8.18.0"
+    "rcon-client": "^4.2.5",
+    "ws": "^8.18.2"
   }
 }

@@ -5,13 +5,22 @@
 `v2.x` mc插件已更换为 [鹊桥](https://github.com/17TheWord/QueQiao) 同时支持插件服与MOD服
 `v1.x` mc插件已停止维护，但可以继续使用 [chatSocketServer-spigot](https://github.com/Twiyin0/chatSocketServer-spigot) 仅支持插件服(1.13~1.21)
 使用详情查看  
-* [音铃的博客(v2.x)](https://twiyin0.github.io/blogs/myblog/mc/wskoishitomc.html)
-* [音铃的博客(v1.x)](https://twiyin0.github.io/blogs/myblog/mc/koishiandmc.html)
+* [音铃的博客(v2.x)](https://blog.iin0.cn/views/myblog/mc/wskoishitomc.html)
+* [音铃的博客(v1.x)](https://blog.iin0.cn/views/myblog/mc/koishiandmc.html)
 
 **注意**  
 rcon并非完全跟控制台一样所有命令都会有反馈
 
 # CHANGELOG
+## v2.0.4
+## 修复
+* 修复了一下重连导致多个客户端连接的问题
+* 重构了我的垢使代码
+
+## v2.0.4-beta
+## 修复
+* 修复了一下重连导致多个客户端连接的问题
+
 ## v2.0.3
 ### 更新
 感谢[@17TheWord](https://github.com/17TheWord)大佬的支持

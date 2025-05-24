@@ -2,11 +2,10 @@ import { Context, Logger, Schema, h, Bot } from 'koishi'
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
 import { getListeningEvent, getSubscribedEvents, eventTrans, wsConf } from './values'
-import { extractAndRemoveColor, name } from './index'
 
 class mcWss {
     private conf: mcWss.Config;
-    private logger = new Logger(name);
+    private logger = new Logger("Minecraft-sync-msg-Wss");
     constructor(ctx: Context, cfg: mcWss.Config) {
         this.conf = cfg;
         let wss:WebSocketServer;
@@ -140,6 +139,19 @@ class mcWss {
         const clientOrigin = clientOriginHeader as string | undefined;    
         return { valid: true, clientOrigin };
     }
+}
+
+export function extractAndRemoveColor(input: string): { output: string, color: string } {
+    const regex = /&(\w+)&/;
+    const match = input.match(regex);
+  
+    if (match) {
+      const color = match[1];
+      const output = input.replace(regex, '');
+      return { output, color };
+    }
+  
+    return { output: input, color: '' };
 }
 
 namespace mcWss {
