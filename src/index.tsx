@@ -4,6 +4,8 @@ import { Rcon } from 'rcon-client'
 import { getListeningEvent, getSubscribedEvents, eventTrans, wsConf, rconConf } from './values'
 import mcWss from './mcwss'
 
+export const name = 'mcmsg'
+
 const logger = new Logger('minecraft-sync-msg')
 
 interface MessageColor {
@@ -70,6 +72,8 @@ class MinecraftSyncMsg {
   private setupWebSocket() {
     if (this.config.wsServer === '服务端') {
       this.pl_fork = this.ctx.plugin(mcWss, this.config)
+      // this.pl_fork = new mcWss(this.ctx, this.config);
+      return;
     }
     else
       this.connectWebSocket()
@@ -149,6 +153,7 @@ class MinecraftSyncMsg {
       .replaceAll('&amp;', '&')
       .replaceAll(/<\/?template>/gi, '')
       .replaceAll(/§./g, '')
+    sendMsg = sendMsg.replaceAll(/<json.*\/>/gi,'<json消息>').replaceAll(/<video.*\/>/gi,'<视频消息>').replaceAll(/<audio.*\/>/gi,'<音频消息>')
   
     const imageMatch = sendMsg.match(/(https?|file):\/\/.*\.(jpg|jpeg|webp|ico|gif|jfif|bmp|png)/gi)
     const sendImage = imageMatch?.[0]
@@ -408,7 +413,7 @@ namespace MinecraftSyncMsg {
       sendToChannel: Schema.array(String)
         .description('消息发送到目标群组'),
       sendprefix: Schema.string().default('.#')
-        .description("消息发送前缀（不可与命令发送前缀相同）"),
+        .description("消息发送前缀（不可与命令发送前缀相同,可以为空）"),
       cmdprefix: Schema.string().default('./')
         .description("命令发送前缀（不可与消息发送前缀相同）"),
       hideConnect: Schema.boolean().default(true).description('关闭连接成功/失败提示')

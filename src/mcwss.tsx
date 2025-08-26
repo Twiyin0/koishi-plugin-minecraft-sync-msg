@@ -2,113 +2,163 @@ import { Context, Logger, Schema, h, Bot } from 'koishi'
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
 import { getListeningEvent, getSubscribedEvents, eventTrans, wsConf } from './values'
+import { send } from 'process';
 
 class mcWss {
     private conf: mcWss.Config;
     private logger = new Logger("Minecraft-sync-msg-Wss");
+    private wss: WebSocketServer;
+    private ctx: Context;
+    private connectedClients: Set<WebSocket> = new Set();
+
     constructor(ctx: Context, cfg: mcWss.Config) {
         this.conf = cfg;
-        let wss:WebSocketServer;
+        this.ctx = ctx;
+        
         ctx.on('ready', async () => {
-            wss = new WebSocketServer({ host: cfg.wsHost, port: cfg.wsPort });
+            this.wss = new WebSocketServer({ host: cfg.wsHost, port: cfg.wsPort });
             ctx.logger.info(`Websocket服务器已启动 ws://${cfg.wsHost}:${cfg.wsPort}`);
-        })
+            
+            // 设置 WebSocket 连接处理
+            this.setupWebSocketHandlers();
+        });
 
+        // 设置消息处理（只需要一次）
+        this.setupMessageHandler();
+        
         ctx.on('dispose', async () => {
-            wss.close();
-        })
+            if (this.wss) {
+                this.wss.close();
+            }
+            this.connectedClients.clear();
+        });
+    }
 
-        // 当有新的 WebSocket 连接时触发
-        wss?.on('connection', (ws: WebSocket, req: IncomingMessage) => {
-
+    private setupWebSocketHandlers() {
+        this.wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
             let msgData = {
                 "api": "send_msg",
                 data: {
                     "message": {
                     type: "text",
                     data: {
-                        text: extractAndRemoveColor(cfg.joinMsg).output,
-                        color: extractAndRemoveColor(cfg.joinMsg).color? extractAndRemoveColor(cfg.joinMsg).color : "gold"
+                        text: extractAndRemoveColor(this.conf.joinMsg).output,
+                        color: extractAndRemoveColor(this.conf.joinMsg).color? extractAndRemoveColor(this.conf.joinMsg).color : "gold"
                     }
                     }
                 }
             }
             ws.send(JSON.stringify(msgData));
-            ctx.logger.success('客户端连接成功!');
+            this.ctx.logger.success('客户端连接成功!');
 
             const headers = req.headers;
 
             // 验证 Token
             if (!this.verifyHeaders(headers).valid) {
-                ctx.logger.error('请求头验证失败!');
-                if (!cfg.hideConnect) ctx.bots.forEach(async (bot: Bot) => {
-                    const channels = cfg.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
+                this.ctx.logger.error('请求头验证失败!');
+                if (!this.conf.hideConnect) this.ctx.bots.forEach(async (bot: Bot) => {
+                    const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
                     bot.broadcast(channels, "Websocket请求头验证失败!", 0);
                 });
                 ws.close(1008, 'Invalid header!');
                 return;
             }
-            if (!cfg.hideConnect) ctx.bots.forEach(async (bot: Bot) => {
-                const channels = cfg.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
+            
+            if (!this.conf.hideConnect) this.ctx.bots.forEach(async (bot: Bot) => {
+                const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
                 bot.broadcast(channels, "Websocket客户端连接成功!", 0);
             });
 
+            // 添加到连接的客户端集合
+            this.connectedClients.add(ws);
+
             // 当收到客户端消息时触发
             ws.on('message', async (buffer)=> {
+                this.ctx.logger.info(`收到来自客户端的消息: ${buffer.toString()}`);
                 const data = JSON.parse(buffer.toString())
                 let eventName = data.event_name? getListeningEvent(data.event_name):'';
-                let sendMsg = getSubscribedEvents(cfg.event).includes(eventName)? `[${data.server_name}](${eventTrans[eventName].name}) ${eventTrans[eventName].action? data.player?.nickname+' ':''}${(eventTrans[eventName].action? eventTrans[eventName].action+' ':'')}${data.message? data.message:''}`:''
+                let sendMsg = getSubscribedEvents(this.conf.event).includes(eventName)? `[${data.server_name}](${eventTrans[eventName].name}) ${eventTrans[eventName].action? data.player?.nickname+' ':''}${(eventTrans[eventName].action? eventTrans[eventName].action+' ':'')}${data.message? data.message:''}`:''
                 sendMsg = h.unescape(sendMsg).replaceAll('&amp;','&').replaceAll(/<\/?template>/gi,'').replaceAll(/§./g,'')
+                sendMsg = sendMsg.replaceAll(/<json.*\/>/gi,'<json消息>').replaceAll(/<video.*\/>/gi,'<视频消息>').replaceAll(/<audio.*\/>/gi,'<音频消息>')
+                const imageMatch = sendMsg.match(/(https?|file):\/\/.*\.(jpg|jpeg|webp|ico|gif|jfif|bmp|png)/gi)
+                const sendImage = imageMatch?.[0]
+                if (sendImage) {
+                    sendMsg = sendMsg.replace(sendImage, `<img src="${sendImage}" />`)
+                }
                 if(data.server_name)
-                  ctx.bots.forEach(async (bot: Bot) => {
-                    const channels = cfg.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
+                  this.ctx.bots.forEach(async (bot: Bot) => {
+                    const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
                     sendMsg? bot.broadcast(channels, sendMsg, 0):'';
                 });
             })
 
-            ws.on('error', function error(err) {
-                if (!cfg.hideConnect) ctx.bots.forEach(async (bot: Bot) => {
-                  const channels = cfg.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
+            ws.on('error', (err) => {
+                if (!this.conf.hideConnect) this.ctx.bots.forEach(async (bot: Bot) => {
+                  const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
                   bot.broadcast(channels, "与Websocket客户端断通信时发生错误!", 0);
                 });
-                ctx.logger.error('与Websocket客户端断通信时发生错误!'+err)
+                this.ctx.logger.error('与Websocket客户端断通信时发生错误!'+err)
             });
 
             // 当客户端断开连接时触发
             ws.on('close', () => {
-                if (!cfg.hideConnect) ctx.bots.forEach(async (bot: Bot) => {
-                    const channels = cfg.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
+                this.connectedClients.delete(ws);
+                if (!this.conf.hideConnect) this.ctx.bots.forEach(async (bot: Bot) => {
+                    const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
                     bot.broadcast(channels, "与Websocket客户端断开连接!", 0);
                 });
-                ctx.logger.error('非正常与Websocket客户端断开连接!')
+                this.ctx.logger.error('非正常与Websocket客户端断开连接!')
             });
+        });
+    }
 
-            ctx.on('message', async (session) => {
-                if (cfg.sendToChannel.includes(`${session.platform}:${session.channelId}`) || session.platform=="sandbox") {
-                  if ((session.content.startsWith(cfg.sendprefix)) && session.content != cfg.sendprefix) {
-                    let msg:string = session.content.replaceAll('&amp;', '&').replaceAll(/<\/?template>/gi,'').replaceAll(cfg.sendprefix,'');
-                    try {
+    private setupMessageHandler() {
+        this.ctx.on('message', async (session) => {
+            this.ctx.logger.info(`收到聊天消息: ${session.content} 来自 ${session.platform}:${session.channelId}`);
+            
+            // 处理来自 Koishi 的消息，转发到 Minecraft
+            if (this.conf.sendToChannel.includes(`${session.platform}:${session.channelId}`) || session.platform === "sandbox") {
+                if ((session.content.startsWith(this.conf.sendprefix)) && session.content !== this.conf.sendprefix) {
+                    let msg: string = session.content.replaceAll('&amp;', '&').replaceAll(/<\/?template>/gi, '').replaceAll(this.conf.sendprefix, '');
+                    
+                    // 向所有连接的 WebSocket 客户端发送消息
+                    if (this.connectedClients.size > 0) {
                         let msgData = {
                             "api": "send_msg",
                             data: {
-                            "message": {
-                                type: "text",
-                                data: {
-                                text: `(${session.platform})[${session.event.user.name}] `+extractAndRemoveColor(msg).output,
-                                color: extractAndRemoveColor(msg).color? extractAndRemoveColor(msg).color : "white"
+                                "message": {
+                                    type: "text",
+                                    data: {
+                                        text: `(${session.platform})[${session.event.user.name}] ` + extractAndRemoveColor(msg).output,
+                                        color: extractAndRemoveColor(msg).color ? extractAndRemoveColor(msg).color : "white"
+                                    }
                                 }
                             }
+                        };
+                        
+                        let sent = false;
+                        this.connectedClients.forEach((client) => {
+                            if (client.readyState === WebSocket.OPEN) {
+                                try {
+                                    client.send(JSON.stringify(msgData));
+                                    sent = true;
+                                } catch (err) {
+                                    this.ctx.logger.error(`聊天消息发送到WebSocket客户端失败: ${err}`);
+                                }
                             }
+                        });
+                        
+                        if (!sent) {
+                            session.send('发送失败! 没有可用的WebSocket连接。');
                         }
-                        // 发送消息示例
-                        ws?.send(JSON.stringify(msgData));
-                        } catch (err) {
-                            session.send('发送失败!');
-                            ctx.logger.error(`聊天消息发送到WebSocket客户端失败`);
-                        }
+                    } else {
+                        session.send('发送失败! 没有可用的WebSocket连接。');
                     }
                 }
-            })
+            }
+            
+            // 这里可以添加其他消息处理逻辑
+            // 比如处理来自 Minecraft 的消息等
         });
     }
 
