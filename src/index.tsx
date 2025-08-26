@@ -30,7 +30,7 @@ class MinecraftSyncMsg {
   private isDisposing = false
   private reconnectAttempts = 0
   private reconnectIntervalId: NodeJS.Timeout | null = null
-  private fork: any
+  private pl_fork: any
 
   constructor(private ctx: Context, private config: MinecraftSyncMsg.Config) {
     this.initialize()
@@ -69,11 +69,10 @@ class MinecraftSyncMsg {
 
   private setupWebSocket() {
     if (this.config.wsServer === '服务端') {
-      this.fork = this.ctx.plugin(mcWss, this.config)
-      return
+      this.pl_fork = this.ctx.plugin(mcWss, this.config)
     }
-
-    this.connectWebSocket()
+    else
+      this.connectWebSocket()
   }
 
   private connectWebSocket() {
@@ -377,8 +376,8 @@ class MinecraftSyncMsg {
   }
 
   private async dispose() {
-    await this.fork?.dispose()
-    this.fork ? this.ctx.registry.delete(mcWss) : undefined
+    await this.pl_fork.dispose();
+    this.ctx.registry.delete(mcWss)
 
     if (this.ws) {
       this.ws.removeAllListeners()
