@@ -288,8 +288,10 @@ class MinecraftSyncMsg {
     let msg = session.content
       .replaceAll('&amp;', '&')
       .replaceAll(/<\/?template>/gi, '')
-      .replaceAll(this.config.sendprefix, '')
+      .replace(this.config.sendprefix, '')
+      .replaceAll(/<json.*\/>/gi,'<json消息>').replaceAll(/<video.*\/>/gi,'<视频消息>').replaceAll(/<audio.*\/>/gi,'<音频消息>')
       .replaceAll(/<img.*\/>/gi, `[[CICode,url=${imgurl}]]`)
+      .replaceAll(/<at.*\/>/gi,`@[${h.select(session.content, 'at')[0].attrs.name? h.select(session.content, 'at')[0].attrs.name:h.select(session.content, 'at')[0].attrs.id}]`)
 
     try {
       const { output, color } = this.extractAndRemoveColor(msg)
@@ -323,11 +325,11 @@ class MinecraftSyncMsg {
       response = await this.sendRconCommand(cmd)
     } else {
       if (this.config.superuser.includes(session.userId)) {
-        response = this.config.cannotCmd.includes(cmd) 
+        response = cmd.includes(this.config.cannotCmd) 
           ? '危险命令，禁止使用' 
           : await this.sendRconCommand(cmd)
         response = response || '该命令无反馈'
-      } else if (this.config.commonCmd.includes(cmd)) {
+      } else if (cmd.includes(this.config.commonCmd)) {
         response = this.config.cannotCmd.includes(cmd) 
           ? '危险命令，禁止使用' 
           : await this.sendRconCommand(cmd)

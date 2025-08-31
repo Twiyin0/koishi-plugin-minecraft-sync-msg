@@ -2,7 +2,6 @@ import { Context, Logger, Schema, h, Bot } from 'koishi'
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
 import { getListeningEvent, getSubscribedEvents, eventTrans, wsConf } from './values'
-import { send } from 'process';
 
 class mcWss {
     private conf: mcWss.Config;
@@ -113,15 +112,18 @@ class mcWss {
     }
 
     private setupMessageHandler() {
+        let imgurl:any;
         this.ctx.on('message', async (session) => {
-            this.ctx.logger.info(`收到聊天消息: ${session.content} 来自 ${session.platform}:${session.channelId}`);
-            
-            // 处理来自 Koishi 的消息，转发到 Minecraft
+            // this.ctx.logger.info(`收到聊天消息: ${session.content} 来自 ${session.platform}:${session.channelId}`);
+            if (session.content.includes('<img')) {
+                imgurl = h.select(session.content, 'img')[0].attrs.src
+            }
+
             if (this.conf.sendToChannel.includes(`${session.platform}:${session.channelId}`) || session.platform === "sandbox") {
                 if ((session.content.startsWith(this.conf.sendprefix)) && session.content !== this.conf.sendprefix) {
-                    let msg: string = session.content.replaceAll('&amp;', '&').replaceAll(/<\/?template>/gi, '').replaceAll(this.conf.sendprefix, '');
-                    
-                    // 向所有连接的 WebSocket 客户端发送消息
+                    let msg: string = session.content.replaceAll('&amp;', '&').replaceAll(/<\/?template>/gi, '').replace(this.conf.sendprefix, '')
+                    .replaceAll(/<json.*\/>/gi,'<json消息>').replaceAll(/<video.*\/>/gi,'<视频消息>').replaceAll(/<audio.*\/>/gi,'<音频消息>').replaceAll(/<img.*\/>/gi, `[[CICode,url=${imgurl}]]`)
+                    .replaceAll(/<at.*\/>/gi,`@[${h.select(session.content, 'at')[0].attrs.name? h.select(session.content, 'at')[0].attrs.name:h.select(session.content, 'at')[0].attrs.id}]`)
                     if (this.connectedClients.size > 0) {
                         let msgData = {
                             "api": "send_msg",
@@ -157,8 +159,6 @@ class mcWss {
                 }
             }
             
-            // 这里可以添加其他消息处理逻辑
-            // 比如处理来自 Minecraft 的消息等
         });
     }
 

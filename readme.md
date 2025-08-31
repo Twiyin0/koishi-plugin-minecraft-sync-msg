@@ -12,6 +12,16 @@
 rcon并非完全跟控制台一样所有命令都会有反馈
 
 # CHANGELOG
+## v2.0.8
+## 优化
+* 简化at元素
+* 修复RCON禁止的指令不生效
+
+## v2.0.7
+## 优化
+* 简化一些消息元素
+* 作为服务端使用时支持[chatImage](https://github.com/kitUIN/ChatImage) MOD
+
 ## v2.0.6
 ## 修复
 * 修复了作为服务端时koishi消息无响应的问题
