@@ -1,0 +1,9 @@
+minecraft-sync-msg:
+  action:
+    PlayerJoinEvent: '[join] Player {0} joined the game'
+    PlayerCommandPreprocessEvent: '[command] Player {0} executed command'
+    PlayerDeathEvent: '[death] Player {0} meet the god'
+    AsyncPlayerChatEvent: '[chat] Player {0} said: {1}'
+    PlayerQuitEvent: '[quit] Player {0} left the game'
+  message:
+    MCReceivePrefix: '({0})[{1}]'

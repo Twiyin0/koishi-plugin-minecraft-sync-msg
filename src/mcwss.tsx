@@ -2,6 +2,8 @@ import { Context, Logger, Schema, h, Bot } from 'koishi'
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
 import { getListeningEvent, getSubscribedEvents, eventTrans, wsConf } from './values'
+import zhCN from './locale/zh-CN.yml'
+import enUS from './locale/en-US.yml'
 
 class mcWss {
     private conf: mcWss.Config;
@@ -15,6 +17,8 @@ class mcWss {
         this.ctx = ctx;
         
         ctx.on('ready', async () => {
+            this.ctx.i18n.define('zh-CN', zhCN)
+            this.ctx.i18n.define('en-US', enUS)
             this.wss = new WebSocketServer({ host: cfg.wsHost, port: cfg.wsPort });
             ctx.logger.info(`Websocket服务器已启动 ws://${cfg.wsHost}:${cfg.wsPort}`);
             
@@ -76,14 +80,18 @@ class mcWss {
                 this.ctx.logger.info(`收到来自客户端的消息: ${buffer.toString()}`);
                 const data = JSON.parse(buffer.toString())
                 let eventName = data.event_name? getListeningEvent(data.event_name):'';
-                let sendMsg = getSubscribedEvents(this.conf.event).includes(eventName)? `[${data.server_name}](${eventTrans[eventName].name}) ${eventTrans[eventName].action? data.player?.nickname+' ':''}${(eventTrans[eventName].action? eventTrans[eventName].action+' ':'')}${data.message? data.message:''}`:''
-                sendMsg = h.unescape(sendMsg).replaceAll('&amp;','&').replaceAll(/<\/?template>/gi,'').replaceAll(/§./g,'')
-                sendMsg = sendMsg.replaceAll(/<json.*\/>/gi,'<json消息>').replaceAll(/<video.*\/>/gi,'<视频消息>').replaceAll(/<audio.*\/>/gi,'<音频消息>')
+                // let sendMsg = getSubscribedEvents(this.conf.event).includes(eventName)? `[${data.server_name}](${eventTrans[eventName].name}) ${eventTrans[eventName].action? data.player?.nickname+' ':''}${(eventTrans[eventName].action? eventTrans[eventName].action+' ':'')}${data.message? data.message:''}`:''
+                // let sendMsg:any = h.unescape(sendMsg).replaceAll('&amp;','&').replaceAll(/<\/?template>/gi,'').replaceAll(/§./g,'')
+                let sendMsg:any = h.unescape(data.message ? data.message : '').replaceAll('&amp;','&').replaceAll(/<\/?template>/gi,'').replaceAll(/§./g,'')
+                sendMsg = sendMsg.replaceAll(/<json.*\/>/gi,'<json消息>')
                 const imageMatch = sendMsg.match(/(https?|file):\/\/.*\.(jpg|jpeg|webp|ico|gif|jfif|bmp|png)/gi)
                 const sendImage = imageMatch?.[0]
                 if (sendImage) {
                     sendMsg = sendMsg.replace(sendImage, `<img src="${sendImage}" />`)
                 }
+
+                sendMsg = this.ctx.i18n.render(['zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, sendMsg])
+
                 if(data.server_name)
                   this.ctx.bots.forEach(async (bot: Bot) => {
                     const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
@@ -131,7 +139,8 @@ class mcWss {
                                 "message": {
                                     type: "text",
                                     data: {
-                                        text: `(${session.platform})[${session.event.user.name}] ` + extractAndRemoveColor(msg).output,
+                                        // text: `(${session.platform})[${session.event.user.name}] ` + extractAndRemoveColor(msg).output,
+                                        text: (this.ctx.i18n.render(['zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,session.userId])).map(element => element.attrs.content).join('') + extractAndRemoveColor(msg).output,
                                         color: extractAndRemoveColor(msg).color ? extractAndRemoveColor(msg).color : "white"
                                     }
                                 }
@@ -215,7 +224,7 @@ namespace mcWss {
         wsConf,
         Schema.object({
           sendToChannel: Schema.array(String)
-          .description('消息发送到目标群组'),
+          .description('消息发送到目标群组格式{paltform}:{groupId}'),
           sendprefix: Schema.string().default('.#')
           .description("消息发送前缀（不可与命令发送前缀相同）"),
           hideConnect: Schema.boolean().default(true).description('关闭连接成功/失败提示')

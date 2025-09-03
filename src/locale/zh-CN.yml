@@ -1,0 +1,9 @@
+minecraft-sync-msg:
+  action:
+    PlayerJoinEvent: '[加入]{0} 加入了服务器！'
+    PlayerCommandPreprocessEvent: '[指令]{0} 执行了指令'
+    PlayerDeathEvent: '[死亡]{0} 与山长眠！'
+    AsyncPlayerChatEvent: '[聊天]{0} 说：{1}'
+    PlayerQuitEvent: '[离开]{0} 离开了服务器！'
+  message:
+    MCReceivePrefix: '({0})[{1}]'

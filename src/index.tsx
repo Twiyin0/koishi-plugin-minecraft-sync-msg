@@ -3,6 +3,8 @@ import { WebSocket, RawData } from 'ws'
 import { Rcon } from 'rcon-client'
 import { getListeningEvent, getSubscribedEvents, eventTrans, wsConf, rconConf } from './values'
 import mcWss from './mcwss'
+import zhCN from './locale/zh-CN.yml'
+import enUS from './locale/en-US.yml'
 
 export const name = 'mcmsg'
 
@@ -33,6 +35,8 @@ class MinecraftSyncMsg {
   private reconnectAttempts = 0
   private reconnectIntervalId: NodeJS.Timeout | null = null
   private pl_fork: any
+  private enUS:any
+  private zhCN:any
 
   constructor(private ctx: Context, private config: MinecraftSyncMsg.Config) {
     this.initialize()
@@ -43,6 +47,8 @@ class MinecraftSyncMsg {
     this.setupWebSocket()
     this.setupMessageHandler()
     this.setupDisposeHandler()
+    this.ctx.i18n.define('zh-CN', zhCN)
+    this.ctx.i18n.define('en-US', enUS)
   }
 
   private setupRcon() {
@@ -139,21 +145,22 @@ class MinecraftSyncMsg {
   
     const eventName = data.event_name ? getListeningEvent(data.event_name) : ''
     
-    if (!getSubscribedEvents(this.config.event).includes(eventName)) return
+    // if (!getSubscribedEvents(this.config.event).includes(eventName)) return
   
-    let sendMsg = `[${data.server_name}](${eventTrans[eventName].name}) ${
-      eventTrans[eventName].action ? data.player?.nickname + ' ' : ''
-    }${
-      eventTrans[eventName].action ? eventTrans[eventName].action + ' ' : ''
-    }${
-      data.message ? data.message : ''
-    }`
+    // let sendMsg = `[${data.server_name}](${eventTrans[eventName].name}) ${
+    //   eventTrans[eventName].action ? data.player?.nickname + ' ' : ''
+    // }${
+    //   eventTrans[eventName].action ? eventTrans[eventName].action + ' ' : ''
+    // }${
+    //   data.message ? data.message : ''
+    // }`
+
   
-    sendMsg = h.unescape(sendMsg)
+    let sendMsg:any = h.unescape(data.message ? data.message : '')
       .replaceAll('&amp;', '&')
       .replaceAll(/<\/?template>/gi, '')
       .replaceAll(/§./g, '')
-    sendMsg = sendMsg.replaceAll(/<json.*\/>/gi,'<json消息>').replaceAll(/<video.*\/>/gi,'<视频消息>').replaceAll(/<audio.*\/>/gi,'<音频消息>')
+    sendMsg = sendMsg.replaceAll(/<json.*\/>/gi,'<json消息>')
   
     const imageMatch = sendMsg.match(/(https?|file):\/\/.*\.(jpg|jpeg|webp|ico|gif|jfif|bmp|png)/gi)
     const sendImage = imageMatch?.[0]
@@ -161,7 +168,9 @@ class MinecraftSyncMsg {
     if (sendImage) {
       sendMsg = sendMsg.replace(sendImage, `<img src="${sendImage}" />`)
     }
-  
+
+    sendMsg = this.ctx.i18n.render(['zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, sendMsg])
+    
     if (data.server_name && sendMsg) {
       this.broadcastToChannels(sendMsg)
     }
@@ -301,7 +310,8 @@ class MinecraftSyncMsg {
           "message": {
             type: "text",
             data: {
-              text: `(${session.platform})[${session.event.user.name}] ` + output,
+              // text: `(${session.platform})[${session.event.user.name}] ` + output,
+              text: (this.ctx.i18n.render(['zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,session.userId])).map(element => element.attrs.content).join('') + output,
               color: color || "white"
             }
           }
@@ -371,6 +381,7 @@ class MinecraftSyncMsg {
         .filter(str => str.includes(`${bot.platform}`))
         .map(str => str.replace(`${bot.platform}:`, ''))
       bot.broadcast(channels, message, 0)
+      
     })
   }
 
@@ -413,7 +424,7 @@ namespace MinecraftSyncMsg {
     rconConf,
     Schema.object({
       sendToChannel: Schema.array(String)
-        .description('消息发送到目标群组'),
+        .description('消息发送到目标群组格式{platform}:{groupId}'),
       sendprefix: Schema.string().default('.#')
         .description("消息发送前缀（不可与命令发送前缀相同,可以为空）"),
       cmdprefix: Schema.string().default('./')
@@ -428,6 +439,10 @@ namespace MinecraftSyncMsg {
   * 命令发送前缀(不能为空)和消息发送前缀(可以为空)不能相同
   * forge端不支持PlayerCommandPreprocessEvent事件
   * * 原版端仅支持聊天、加入、离开事件
+  * sendToChannel的格式为{platform}:{groupId},如：\`discord:123456\`
+  * v2.1.0-beta可以通过\`本地化\`自定义对应事件发送格式
+    - action节点的{0}是玩家名称{1}是消息
+    - message节点中的{0}是平台{1}是用户名
   `
 }
 
