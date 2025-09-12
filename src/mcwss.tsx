@@ -1,7 +1,7 @@
 import { Context, Logger, Schema, h, Bot } from 'koishi'
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
-import { getListeningEvent, getSubscribedEvents, eventTrans, wsConf } from './values'
+import { getListeningEvent, getSubscribedEvents, wsConf } from './values'
 import zhCN from './locale/zh-CN.yml'
 import enUS from './locale/en-US.yml'
 
@@ -69,7 +69,7 @@ class mcWss {
             
             if (!this.conf.hideConnect) this.ctx.bots.forEach(async (bot: Bot) => {
                 const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
-                bot.broadcast(channels, "Websocket客户端连接成功!", 0);
+                if (!this.conf.hideConnect) bot.broadcast(channels, "Websocket客户端连接成功!", 0);
             });
 
             // 添加到连接的客户端集合
@@ -80,6 +80,8 @@ class mcWss {
                 this.ctx.logger.info(`收到来自客户端的消息: ${buffer.toString()}`);
                 const data = JSON.parse(buffer.toString())
                 let eventName = data.event_name? getListeningEvent(data.event_name):'';
+                if (!getSubscribedEvents(this.conf.event).includes(eventName)) return
+
                 // let sendMsg = getSubscribedEvents(this.conf.event).includes(eventName)? `[${data.server_name}](${eventTrans[eventName].name}) ${eventTrans[eventName].action? data.player?.nickname+' ':''}${(eventTrans[eventName].action? eventTrans[eventName].action+' ':'')}${data.message? data.message:''}`:''
                 // let sendMsg:any = h.unescape(sendMsg).replaceAll('&amp;','&').replaceAll(/<\/?template>/gi,'').replaceAll(/§./g,'')
                 let sendMsg:any = h.unescape(data.message ? data.message : '').replaceAll('&amp;','&').replaceAll(/<\/?template>/gi,'').replaceAll(/§./g,'')
@@ -90,7 +92,7 @@ class mcWss {
                     sendMsg = sendMsg.replace(sendImage, `<img src="${sendImage}" />`)
                 }
 
-                sendMsg = this.ctx.i18n.render(['zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, sendMsg])
+                sendMsg = this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, sendMsg])
 
                 if(data.server_name)
                   this.ctx.bots.forEach(async (bot: Bot) => {
@@ -120,10 +122,10 @@ class mcWss {
     }
 
     private setupMessageHandler() {
-        let imgurl:any;
+        let imgurl:any='<unknown image url>'
         this.ctx.on('message', async (session) => {
             // this.ctx.logger.info(`收到聊天消息: ${session.content} 来自 ${session.platform}:${session.channelId}`);
-            if (session.content.includes('<img')) {
+            if (session.content.includes('<img') && h.select(session.content, 'img')[0]?.type === 'img' && h.select(session.content, 'img')[0]?.attrs?.src) {
                 imgurl = h.select(session.content, 'img')[0].attrs.src
             }
 
@@ -131,7 +133,7 @@ class mcWss {
                 if ((session.content.startsWith(this.conf.sendprefix)) && session.content !== this.conf.sendprefix) {
                     let msg: string = session.content.replaceAll('&amp;', '&').replaceAll(/<\/?template>/gi, '').replace(this.conf.sendprefix, '')
                     .replaceAll(/<json.*\/>/gi,'<json消息>').replaceAll(/<video.*\/>/gi,'<视频消息>').replaceAll(/<audio.*\/>/gi,'<音频消息>').replaceAll(/<img.*\/>/gi, `[[CICode,url=${imgurl}]]`)
-                    .replaceAll(/<at.*\/>/gi,`@[${h.select(session.content, 'at')[0].attrs.name? h.select(session.content, 'at')[0].attrs.name:h.select(session.content, 'at')[0].attrs.id}]`)
+                    .replaceAll(/<at.*\/>/gi,`@[${h.select(session.content, 'at')[0]?.attrs?.name? h.select(session.content, 'at')[0]?.attrs?.name:h.select(session.content, 'at')[0]?.attrs?.id}]`)
                     if (this.connectedClients.size > 0) {
                         let msgData = {
                             "api": "send_msg",
@@ -140,7 +142,7 @@ class mcWss {
                                     type: "text",
                                     data: {
                                         // text: `(${session.platform})[${session.event.user.name}] ` + extractAndRemoveColor(msg).output,
-                                        text: (this.ctx.i18n.render(['zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,session.userId])).map(element => element.attrs.content).join('') + extractAndRemoveColor(msg).output,
+                                        text: (this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,session.userId])).map(element => element.attrs?.content).join('') + extractAndRemoveColor(msg).output,
                                         color: extractAndRemoveColor(msg).color ? extractAndRemoveColor(msg).color : "white"
                                     }
                                 }
@@ -217,7 +219,8 @@ namespace mcWss {
     export interface Config extends wsConf {
         sendToChannel: string[],
         sendprefix: string,
-        hideConnect: boolean
+        hideConnect: boolean,
+        locale: string | any
     }
 
     export const Config: Schema<Config> = Schema.intersect([
@@ -227,7 +230,9 @@ namespace mcWss {
           .description('消息发送到目标群组格式{paltform}:{groupId}'),
           sendprefix: Schema.string().default('.#')
           .description("消息发送前缀（不可与命令发送前缀相同）"),
-          hideConnect: Schema.boolean().default(true).description('关闭连接成功/失败提示')
+          hideConnect: Schema.boolean().default(true).description('关闭连接成功/失败提示'),
+          locale: Schema.union(['zh-CN','en-US']).default('zh-CN')
+          .description('本地化语言选择,zh_CN为中文,en-US为英文')
         }).description("基础配置")
     ] as const)
 }

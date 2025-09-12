@@ -1,12 +1,12 @@
 import { Context, Schema, Logger, h, Bot } from 'koishi'
 import { WebSocket, RawData } from 'ws'
 import { Rcon } from 'rcon-client'
-import { getListeningEvent, getSubscribedEvents, eventTrans, wsConf, rconConf } from './values'
+import { getListeningEvent, getSubscribedEvents, wsConf, rconConf } from './values'
 import mcWss from './mcwss'
 import zhCN from './locale/zh-CN.yml'
 import enUS from './locale/en-US.yml'
 
-export const name = 'mcmsg'
+export const name = 'minecraft-sync-msg'
 
 const logger = new Logger('minecraft-sync-msg')
 
@@ -145,7 +145,7 @@ class MinecraftSyncMsg {
   
     const eventName = data.event_name ? getListeningEvent(data.event_name) : ''
     
-    // if (!getSubscribedEvents(this.config.event).includes(eventName)) return
+    if (!getSubscribedEvents(this.config.event).includes(eventName)) return
   
     // let sendMsg = `[${data.server_name}](${eventTrans[eventName].name}) ${
     //   eventTrans[eventName].action ? data.player?.nickname + ' ' : ''
@@ -169,7 +169,7 @@ class MinecraftSyncMsg {
       sendMsg = sendMsg.replace(sendImage, `<img src="${sendImage}" />`)
     }
 
-    sendMsg = this.ctx.i18n.render(['zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, sendMsg])
+    sendMsg = this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, sendMsg])
     
     if (data.server_name && sendMsg) {
       this.broadcastToChannels(sendMsg)
@@ -289,8 +289,8 @@ class MinecraftSyncMsg {
   }
 
   private async handleMessageCommand(session: any) {
-    let imgurl: string
-    if (session.content.includes('<img')) {
+    let imgurl:any='<unknown image url>';
+    if (session.content.includes('<img') && h.select(session.content, 'img')[0]?.type === 'img' && h.select(session.content, 'img')[0]?.attrs?.src) {
       imgurl = h.select(session.content, 'img')[0].attrs.src
     }
 
@@ -300,7 +300,7 @@ class MinecraftSyncMsg {
       .replace(this.config.sendprefix, '')
       .replaceAll(/<json.*\/>/gi,'<json消息>').replaceAll(/<video.*\/>/gi,'<视频消息>').replaceAll(/<audio.*\/>/gi,'<音频消息>')
       .replaceAll(/<img.*\/>/gi, `[[CICode,url=${imgurl}]]`)
-      .replaceAll(/<at.*\/>/gi,`@[${h.select(session.content, 'at')[0].attrs.name? h.select(session.content, 'at')[0].attrs.name:h.select(session.content, 'at')[0].attrs.id}]`)
+      .replaceAll(/<at.*\/>/gi,`@[${h.select(session.content, 'at')[0]?.attrs?.name? h.select(session.content, 'at')[0]?.attrs?.name:h.select(session.content, 'at')[0]?.attrs?.id}]`)
 
     try {
       const { output, color } = this.extractAndRemoveColor(msg)
@@ -311,7 +311,7 @@ class MinecraftSyncMsg {
             type: "text",
             data: {
               // text: `(${session.platform})[${session.event.user.name}] ` + output,
-              text: (this.ctx.i18n.render(['zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,session.userId])).map(element => element.attrs.content).join('') + output,
+              text: (this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,session.userId])).map(element => element.attrs.content).join('') + output,
               color: color || "white"
             }
           }
@@ -417,6 +417,7 @@ namespace MinecraftSyncMsg {
     sendprefix: string
     cmdprefix: string
     hideConnect: boolean
+    locale: string
   }
 
   export const Config: Schema<Config> = Schema.intersect([
@@ -429,7 +430,9 @@ namespace MinecraftSyncMsg {
         .description("消息发送前缀（不可与命令发送前缀相同,可以为空）"),
       cmdprefix: Schema.string().default('./')
         .description("命令发送前缀（不可与消息发送前缀相同）"),
-      hideConnect: Schema.boolean().default(true).description('关闭连接成功/失败提示')
+      hideConnect: Schema.boolean().default(true).description('关闭连接成功/失败提示'),
+      locale: Schema.union(['zh-CN','en-US']).default('zh-CN')
+        .description('本地化语言选择,zh_CN为中文,en-US为英文')
     }).description("基础配置")
   ] as const)
 
