@@ -1,7 +1,7 @@
 {
-  "name": "koishi-plugin-minecraft-sync-msg",
+  "name": "@ajchen/koishi-plugin-minecraft-sync-msg",
   "description": "v2.x更换为Websocket协议-beta为测试版本",
-  "version": "2.1.0-beta.1",
+  "version": "2.2.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "homepage": "https://blog.iin0.cn/views/myblog/mc/koishiandmc.html",
@@ -16,7 +16,7 @@
     "browser": true,
     "description": {
       "en": "A simple websocket communication for MC message interconnection (please stop the plugin before updating)",
-      "zh": "使用鹊桥插件/MOD桥接的Websocket消息互联插件(更新前请停止插件)"
+      "zh": "使用鹊桥插件/MOD桥接的Websocket消息互联插件(修改到API V2)"
     }
   },
   "files": [

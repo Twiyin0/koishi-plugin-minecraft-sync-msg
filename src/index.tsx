@@ -315,7 +315,7 @@ class MinecraftSyncMsg {
         }
       }
       this.ws?.send(JSON.stringify(msgData))
-      this.ctx.logger.info(JSON.stringify(msgData))
+      //this.ctx.logger.info(JSON.stringify(msgData))
     } catch (err) {
       logger.error('[minecraft-sync-msg] 消息发送到WebSocket服务端失败', err)
     }
