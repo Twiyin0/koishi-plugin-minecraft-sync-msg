@@ -7,6 +7,7 @@ import zhCN from './locale/zh-CN.yml'
 import enUS from './locale/en-US.yml'
 
 export const name = 'minecraft-sync-msg'
+export const reusable = true
 
 const logger = new Logger('minecraft-sync-msg')
 
