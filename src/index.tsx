@@ -18,13 +18,12 @@ interface MessageColor {
 interface WsMessageData {
   api: string
   data: {
-    message: {
-      type: string
-      data: {
+    message: [
+      {
         text: string
         color?: string
       }
-    }
+    ]
   }
 }
 
@@ -89,7 +88,7 @@ class MinecraftSyncMsg {
     const headers = {
       "x-self-name": this.config.serverName,
       "Authorization": `Bearer ${this.config.Token}`,
-      "x-client-origin": "koishi"
+      "x-client-origin": "NOTkoishi"
     }
 
     this.ws = new WebSocket(`ws://${this.config.wsHost}:${this.config.wsPort}/minecraft/ws`, {
@@ -116,15 +115,14 @@ class MinecraftSyncMsg {
     }
 
     const msgData: WsMessageData = {
-      "api": "send_msg",
-      data: {
-        "message": {
-          type: "text",
-          data: {
-            text: this.extractAndRemoveColor(this.config.joinMsg).output,
-            color: this.extractAndRemoveColor(this.config.joinMsg).color || "gold"
+      "api": "broadcast",
+      "data": {
+        "message": [
+          {
+            "text": this.extractAndRemoveColor(this.config.joinMsg).output,
+            "color": this.extractAndRemoveColor(this.config.joinMsg).color || "gold"
           }
-        }
+        ]
       }
     }
 
@@ -305,19 +303,19 @@ class MinecraftSyncMsg {
     try {
       const { output, color } = this.extractAndRemoveColor(msg)
       const msgData: WsMessageData = {
-        "api": "send_msg",
-        data: {
-          "message": {
-            type: "text",
-            data: {
+        "api": "broadcast",
+        "data": {
+          "message": [
+            {
               // text: `(${session.platform})[${session.event.user.name}] ` + output,
-              text: (this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,session.userId])).map(element => element.attrs.content).join('') + output,
-              color: color || "white"
+              "text": (this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,session.userId])).map(element => element.attrs.content).join('') + output,
+              "color": color || "white"
             }
-          }
+          ]
         }
       }
       this.ws?.send(JSON.stringify(msgData))
+      this.ctx.logger.info(JSON.stringify(msgData))
     } catch (err) {
       logger.error('[minecraft-sync-msg] 消息发送到WebSocket服务端失败', err)
     }

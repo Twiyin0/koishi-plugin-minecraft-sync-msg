@@ -40,15 +40,14 @@ class mcWss {
     private setupWebSocketHandlers() {
         this.wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
             let msgData = {
-                "api": "send_msg",
+                "api": "broadcast",
                 data: {
-                    "message": {
-                    type: "text",
-                    data: {
+                    "message": [
+                        {
                         text: extractAndRemoveColor(this.conf.joinMsg).output,
                         color: extractAndRemoveColor(this.conf.joinMsg).color? extractAndRemoveColor(this.conf.joinMsg).color : "gold"
-                    }
-                    }
+                        }
+                    ]
                 }
             }
             ws.send(JSON.stringify(msgData));
@@ -136,16 +135,15 @@ class mcWss {
                     .replaceAll(/<at.*\/>/gi,`@[${h.select(session.content, 'at')[0]?.attrs?.name? h.select(session.content, 'at')[0]?.attrs?.name:h.select(session.content, 'at')[0]?.attrs?.id}]`)
                     if (this.connectedClients.size > 0) {
                         let msgData = {
-                            "api": "send_msg",
+                            "api": "broadcast",
                             data: {
-                                "message": {
-                                    type: "text",
-                                    data: {
+                                "message": [
+                                    {
                                         // text: `(${session.platform})[${session.event.user.name}] ` + extractAndRemoveColor(msg).output,
                                         text: (this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,session.userId])).map(element => element.attrs?.content).join('') + extractAndRemoveColor(msg).output,
                                         color: extractAndRemoveColor(msg).color ? extractAndRemoveColor(msg).color : "white"
-                                    }
-                                }
+                                    }   
+                                ]
                             }
                         };
                         
