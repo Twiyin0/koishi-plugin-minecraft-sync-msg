@@ -7,6 +7,7 @@ import zhCN from './locale/zh-CN.yml'
 import enUS from './locale/en-US.yml'
 
 export const name = 'minecraft-sync-msg'
+export const reusable = false
 
 const logger = new Logger('minecraft-sync-msg')
 
@@ -302,13 +303,14 @@ class MinecraftSyncMsg {
 
     try {
       const { output, color } = this.extractAndRemoveColor(msg)
+      const data = await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId)
       const msgData: WsMessageData = {
         "api": "broadcast",
         "data": {
           "message": [
             {
               // text: `(${session.platform})[${session.event.user.name}] ` + output,
-              "text": (this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,session.event.user.name])).map(element => element.attrs.content).join('') + output,
+              "text": (this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,data.card || data.nickname])).map(element => element.attrs.content).join('') + output,
               "color": color || "white"
             }
           ]
