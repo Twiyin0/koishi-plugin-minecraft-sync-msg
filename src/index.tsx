@@ -142,9 +142,9 @@ class MinecraftSyncMsg {
       return
     }
 
-    logger.info(data)
+    // logger.info(data)
   
-    // const eventName = data.event_name ? getListeningEvent(data.event_name) : ''
+    const eventName = data.event_name ? getListeningEvent(data.event_name) : ''
     
     if (!getSubscribedEvents(this.config.event).includes(eventName)) return
   
