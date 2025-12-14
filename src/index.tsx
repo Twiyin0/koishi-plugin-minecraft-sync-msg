@@ -141,8 +141,10 @@ class MinecraftSyncMsg {
       logger.error('Failed to parse WebSocket message:', err)
       return
     }
+
+    logger.info(data)
   
-    const eventName = data.event_name ? getListeningEvent(data.event_name) : ''
+    // const eventName = data.event_name ? getListeningEvent(data.event_name) : ''
     
     if (!getSubscribedEvents(this.config.event).includes(eventName)) return
   
