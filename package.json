@@ -9,6 +9,10 @@
     "type": "git",
     "url": "git+https://github.com/Twiyin0/koishi-plugin-minecraft-sync-msg.git"
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "contributors": [
     "Twiyin0 <twiyin0@outlook.com>"
   ],
