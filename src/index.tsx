@@ -37,6 +37,7 @@ class MinecraftSyncMsg {
   private pl_fork: any
   private enUS:any
   private zhCN:any
+  static reusable = true
 
   constructor(private ctx: Context, private config: MinecraftSyncMsg.Config) {
     this.initialize()
@@ -396,9 +397,11 @@ class MinecraftSyncMsg {
   }
 
   private async dispose() {
-    await this.pl_fork.dispose();
-    this.ctx.registry.delete(mcWss)
-
+    if (this.pl_fork){
+      await this.pl_fork.dispose();
+      this.ctx.registry.delete(mcWss)
+    }
+    
     if (this.ws) {
       this.ws.removeAllListeners()
       if (this.ws.readyState === WebSocket.OPEN) {
