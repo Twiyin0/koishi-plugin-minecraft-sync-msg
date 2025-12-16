@@ -14,11 +14,15 @@ rcon并非完全跟控制台一样所有命令都会有反馈
 # CHANGELOG
 ## v2.2.3
 ### 修复
+* 支持QueQiao 0.3.x
+
+## v2.2.3
+### 修复
 * 现在插件会回复群名片而非id了
 
 ## v2.2.0
 ### 新增
-* 支持queqiaoAPIV2
+* 支持QueQiao APIV2
 
 ## v2.1.0-beta.1
 ### 修复

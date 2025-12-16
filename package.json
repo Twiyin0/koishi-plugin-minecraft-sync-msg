@@ -20,7 +20,7 @@
     "browser": true,
     "description": {
       "en": "A simple websocket communication for MC message interconnection (please stop the plugin before updating)",
-      "zh": "使用鹊桥插件/MOD桥接的Websocket消息互联插件(修改到API V2)"
+      "zh": "使用鹊桥插件/MOD桥接的Websocket消息互联插件(支持QueQiaoAPI V2)"
     }
   },
   "files": [
