@@ -1,6 +1,6 @@
 # koishi-plugin-minecraft-sync-msg
 
-[![npm](https://img.shields.io/npm/v/koishi-plugin-minecraft-sync-msg?style=flat-square)](https://www.npmjs.com/package/koishi-plugin-minecraft-sync-msg)
+[![npm](https://img.shields.io/npm/@ajchen-koishi-plugin-minecraft-sync-msg?style=flat-square)](https://www.npmjs.com/package/@ajchen/koishi-plugin-minecraft-sync-msg)
 
 `v2.x` mc插件已更换为 [鹊桥](https://github.com/17TheWord/QueQiao) 同时支持插件服与MOD服
 `v1.x` mc插件已停止维护，但可以继续使用 [chatSocketServer-spigot](https://github.com/Twiyin0/chatSocketServer-spigot) 仅支持插件服(1.13~1.21)
