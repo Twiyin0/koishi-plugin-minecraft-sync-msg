@@ -12,6 +12,19 @@
 rcon并非完全跟控制台一样所有命令都会有反馈
 
 # CHANGELOG
+## v3.0.0-beta.1
+### 注意
+**此版本后需要配合鹊桥v0.3.x才能正常使用**
+### 修复
+* 修复RCON命令发送逻辑，感谢大佬[GoFightNow](https://github.com/GoFightNow)
+
+## v2.1.0-beta.2
+### 注意
+**此版本后需要配合鹊桥v0.3.x才能正常使用**
+### 修复
+* 修复消息发送api，感谢大佬[@ajchen02](https://github.com/ajchen02)
+* 优化插件重启后重复链接的bug
+
 ## v2.1.0-beta.1
 ### 修复
 * 修复图片发消息至Minecraft时会有报错
