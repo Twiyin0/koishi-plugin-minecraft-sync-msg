@@ -12,6 +12,10 @@
 rcon并非完全跟控制台一样所有命令都会有反馈
 
 # CHANGELOG
+## 3.0.0beta1
+### 修改
+* 合并上游
+
 ## v2.3.0
 ### 新增
 * 支持Reuseable，支持Dispose
