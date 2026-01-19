@@ -331,28 +331,40 @@ class MinecraftSyncMsg {
       .replaceAll('&amp;', '§')
       .replaceAll('&', '§')
       .replaceAll(this.config.cmdprefix, '')
+      .trim();
 
-    let response: string
+    const checkCmdMatch = (list: (string | RegExp)[], target: string) => {
+      return list.some(pattern => {
+        if (pattern instanceof RegExp) {
+          return pattern.test(target);
+        }
+        return target === pattern || target.startsWith(pattern + ' ');
+      });
+    };
+
+    let response: string;
 
     if (this.config.alluser) {
-      response = await this.sendRconCommand(cmd)
+      response = await this.sendRconCommand(cmd);
     } else {
-      if (this.config.superuser.includes(session.userId)) {
-        response = cmd.includes(this.config.cannotCmd) 
+      const isSuperUser = this.config.superuser.includes(session.userId);
+      const isCommonCmd = checkCmdMatch(this.config.commonCmd, cmd);
+      const isForbidden = checkCmdMatch(this.config.cannotCmd, cmd);
+
+      if (isSuperUser) {
+        response = isForbidden 
           ? '危险命令，禁止使用' 
-          : await this.sendRconCommand(cmd)
-        response = response || '该命令无反馈'
-      } else if (cmd.includes(this.config.commonCmd)) {
-        response = this.config.cannotCmd.includes(cmd) 
+          : await this.sendRconCommand(cmd);
+      } else if (isCommonCmd) {
+        response = isForbidden 
           ? '危险命令，禁止使用' 
-          : await this.sendRconCommand(cmd)
-        response = response || '该命令无反馈'
+          : await this.sendRconCommand(cmd);
       } else {
-        response = '无权使用该命令'
+        response = '无权使用该命令';
       }
     }
-
-    session.send(response?.replaceAll(/§./g, '') || '')
+    const finalResponse = response || '该命令无反馈';
+    session.send(finalResponse.replaceAll(/§./g, ''));
   }
 
   private async sendRconCommand(command: string): Promise<string> {
@@ -401,7 +413,8 @@ class MinecraftSyncMsg {
       await this.pl_fork.dispose();
       this.ctx.registry.delete(mcWss)
     }
-    
+        this.ctx.registry.delete(MinecraftSyncMsg)
+
     if (this.ws) {
       this.ws.removeAllListeners()
       if (this.ws.readyState === WebSocket.OPEN) {
@@ -444,6 +457,7 @@ namespace MinecraftSyncMsg {
   export const usage = `
   插件使用详情请看 [v2.x](https://blog.iin0.cn/views/myblog/mc/wskoishitomc.html)  
   *** 注意 ***  
+  * **v3.x为破坏性更新版本，需搭配鹊桥v0.3.x版本使用**
   * 命令发送前缀(不能为空)和消息发送前缀(可以为空)不能相同
   * forge端不支持PlayerCommandPreprocessEvent事件
   * * 原版端仅支持聊天、加入、离开事件

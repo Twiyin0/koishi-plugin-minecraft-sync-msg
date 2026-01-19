@@ -1,7 +1,7 @@
 {
   "name": "@ajchen/koishi-plugin-minecraft-sync-msg",
-  "description": "v2.x更换为Websocket协议-beta为测试版本",
-  "version": "3.0.0beta1",
+  "description": "使用鹊桥插件v0.3.x与minecraft服务器交互！",
+  "version": "3.0.0-beta1",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "homepage": "https://blog.iin0.cn/views/myblog/mc/koishiandmc.html",
