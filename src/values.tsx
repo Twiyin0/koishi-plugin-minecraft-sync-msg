@@ -6,7 +6,8 @@ export enum mcEvent {
     PlayerCommandPreprocessEvent = 1 << 1,
     PlayerDeathEvent = 1 << 2,
     PlayerJoinEvent = 1 << 3,
-    PlayerQuitEvent = 1 << 4
+    PlayerQuitEvent = 1 << 4,
+    PlayerAchievementEvent = 1 << 5
 }
 
 export interface wsConf {
@@ -70,7 +71,7 @@ export const rconConf = Schema.object({
     cannotCmd: Schema.array(String).default(['restart','stop']).description('不能使用的命令'),
 }).collapse().description("RCON配置")
 
-export const eventList = ['AsyncPlayerChatEvent', 'PlayerCommandPreprocessEvent', 'PlayerDeathEvent', 'PlayerJoinEvent', 'PlayerQuitEvent'];
+export const eventList = ['AsyncPlayerChatEvent', 'PlayerCommandPreprocessEvent', 'PlayerDeathEvent', 'PlayerJoinEvent', 'PlayerQuitEvent', 'PlayerAchievementEvent'];
 // export const eventTrans = {
 //     AsyncPlayerChatEvent: {
 //         name: "聊天信息",
@@ -117,12 +118,14 @@ const eventMap = {
     NeoServerChatEvent: 'AsyncPlayerChatEvent',
     MinecraftPlayerChatEvent: 'AsyncPlayerChatEvent',
     BaseChatEvent: 'AsyncPlayerChatEvent',
+    PlayerChatEvent: 'AsyncPlayerChatEvent',
 
     PlayerCommandPreprocessEvent: 'PlayerCommandPreprocessEvent',
     ServerCommandMessageEvent: 'PlayerCommandPreprocessEvent',
     CommandEvent: 'PlayerCommandPreprocessEvent',
     NeoCommandEvent: 'PlayerCommandPreprocessEvent',
     BasePlayerCommandEvent: 'PlayerCommandPreprocessEvent',
+    PlayerCommandEvent: 'PlayerCommandPreprocessEvent',
 
     PlayerDeathEvent: 'PlayerDeathEvent', // Spigot 与 Forge 同名
     NeoPlayerDeathEvent: 'PlayerDeathEvent',
@@ -147,6 +150,8 @@ const eventMap = {
     VelocityCommandExecuteEvent: 'PlayerCommandPreprocessEvent',
     VelocityLoginEvent: 'PlayerJoinEvent',
     VelocityPlayerChatEvent: 'AsyncPlayerChatEvent',
+
+    PlayerAchievementEvent: 'PlayerAchievementEvent',
 };
 
 // 监听映射

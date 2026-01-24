@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-minecraft-sync-msg",
   "description": "[破坏性更新]需搭配鹊桥v0.3.x-beta为测试版本",
-  "version": "3.0.0-beta.1",
+  "version": "3.0.0-beta.2",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "homepage": "https://blog.iin0.cn/views/myblog/mc/koishiandmc.html",

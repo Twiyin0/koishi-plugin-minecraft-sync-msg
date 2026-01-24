@@ -133,6 +133,8 @@ class MinecraftSyncMsg {
     // Convert RawData to string
     const dataStr = buffer.toString()
     let data: any
+
+    
     
     try {
       data = JSON.parse(dataStr)
@@ -140,10 +142,14 @@ class MinecraftSyncMsg {
       logger.error('Failed to parse WebSocket message:', err)
       return
     }
-  
-    const eventName = data.event_name ? getListeningEvent(data.event_name) : ''
+
+    // logger.info(data.event_name);
     
-    if (!getSubscribedEvents(this.config.event).includes(eventName)) return
+    const eventName = data.event_name ? getListeningEvent(data.event_name) : ''
+
+    // logger.info('[debug getEvent]> '+eventName + getSubscribedEvents(this.config.event).includes(eventName));
+    
+    if (!getSubscribedEvents(this.config.event).includes(eventName)) return;
   
     // let sendMsg = `[${data.server_name}](${eventTrans[eventName].name}) ${
     //   eventTrans[eventName].action ? data.player?.nickname + ' ' : ''
@@ -326,40 +332,28 @@ class MinecraftSyncMsg {
       .replaceAll('&amp;', '§')
       .replaceAll('&', '§')
       .replaceAll(this.config.cmdprefix, '')
-      .trim();
 
-    const checkCmdMatch = (list: (string | RegExp)[], target: string) => {
-      return list.some(pattern => {
-        if (pattern instanceof RegExp) {
-          return pattern.test(target);
-        }
-        return target === pattern || target.startsWith(pattern + ' ');
-      });
-    };
-
-    let response: string;
+    let response: string
 
     if (this.config.alluser) {
-      response = await this.sendRconCommand(cmd);
+      response = await this.sendRconCommand(cmd)
     } else {
-      const isSuperUser = this.config.superuser.includes(session.userId);
-      const isCommonCmd = checkCmdMatch(this.config.commonCmd, cmd);
-      const isForbidden = checkCmdMatch(this.config.cannotCmd, cmd);
-
-      if (isSuperUser) {
-        response = isForbidden 
+      if (this.config.superuser.includes(session.userId)) {
+        response = cmd.includes(this.config.cannotCmd) 
           ? '危险命令，禁止使用' 
-          : await this.sendRconCommand(cmd);
-      } else if (isCommonCmd) {
-        response = isForbidden 
+          : await this.sendRconCommand(cmd)
+        response = response || '该命令无反馈'
+      } else if (cmd.includes(this.config.commonCmd)) {
+        response = this.config.cannotCmd.includes(cmd) 
           ? '危险命令，禁止使用' 
-          : await this.sendRconCommand(cmd);
+          : await this.sendRconCommand(cmd)
+        response = response || '该命令无反馈'
       } else {
-        response = '无权使用该命令';
+        response = '无权使用该命令'
       }
     }
-    const finalResponse = response || '该命令无反馈';
-    session.send(finalResponse.replaceAll(/§./g, ''));
+
+    session.send(response?.replaceAll(/§./g, '') || '')
   }
 
   private async sendRconCommand(command: string): Promise<string> {
@@ -397,26 +391,26 @@ class MinecraftSyncMsg {
 
   private setupDisposeHandler() {
     this.ctx.on('dispose', async () => {
-      this.isDisposing = true
-      await this.dispose()
-      this.isDisposing = false
-    })
-  }
-
-  private async dispose() {
-    await this.pl_fork.dispose();
-    this.ctx.registry.delete(mcWss)
-    this.ctx.registry.delete(MinecraftSyncMsg)
-
+    // logger.info('[debug reload] plugin is reloading!');
+    await this.ctx.registry.delete(mcWss);
+    await this.ctx.registry.delete(MinecraftSyncMsg);
+    await new Promise(() => {
+      this.ws.close();
+      this.ws.removeAllListeners();
+      this.clearReconnectInterval();
+    }) 
+    this.ws = null;
+    this.isDisposing = true;
+    this.isDisposing = false;
     if (this.ws) {
-      this.ws.removeAllListeners()
+      this.ws.removeAllListeners();
       if (this.ws.readyState === WebSocket.OPEN) {
-        this.ws.close()
+        this.ws.close();
       }
-      this.ws = undefined
+      this.ws = undefined;
     }
-
-    this.clearReconnectInterval()
+    this.clearReconnectInterval();
+    })
   }
 }
 
@@ -450,7 +444,6 @@ namespace MinecraftSyncMsg {
   export const usage = `
   插件使用详情请看 [v2.x](https://blog.iin0.cn/views/myblog/mc/wskoishitomc.html)  
   *** 注意 ***  
-  * **v3.x为破坏性更新版本，需搭配鹊桥v0.3.x版本使用**
   * 命令发送前缀(不能为空)和消息发送前缀(可以为空)不能相同
   * forge端不支持PlayerCommandPreprocessEvent事件
   * * 原版端仅支持聊天、加入、离开事件
