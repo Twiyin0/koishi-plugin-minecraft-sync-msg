@@ -296,12 +296,13 @@ class MinecraftSyncMsg {
 
     try {
       const { output, color } = this.extractAndRemoveColor(msg)
+      const data = await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId)
       const msgData: WsMessageData = {
         "api": "broadcast",
         "data": {
           "message": [
             {
-              "text": (this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,session.userId])).map(element => element.attrs.content).join('') + output,
+              "text": (this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,data.card || data.nickname])).map(element => element.attrs.content).join('') + output,
               "color": color || "white"
             }
           ]

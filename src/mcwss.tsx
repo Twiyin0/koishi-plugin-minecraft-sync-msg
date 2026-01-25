@@ -135,6 +135,7 @@ class mcWss {
                     let msg: string = session.content.replaceAll('&amp;', '&').replaceAll(/<\/?template>/gi, '').replace(this.conf.sendprefix, '')
                     .replaceAll(/<json.*\/>/gi,'<json消息>').replaceAll(/<video.*\/>/gi,'<视频消息>').replaceAll(/<audio.*\/>/gi,'<音频消息>').replaceAll(/<img.*\/>/gi, `[[CICode,url=${imgurl}]]`)
                     .replaceAll(/<at.*\/>/gi,`@[${h.select(session.content, 'at')[0]?.attrs?.name? h.select(session.content, 'at')[0]?.attrs?.name:h.select(session.content, 'at')[0]?.attrs?.id}]`)
+                    const data = await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId)
                     if (this.connectedClients.size > 0) {
                         let msgData = {
                             "api": "broadcast",
@@ -142,7 +143,7 @@ class mcWss {
                                 "message": [
                                     {
                                         // text: `(${session.platform})[${session.event.user.name}] ` + extractAndRemoveColor(msg).output,
-                                        text: (this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,session.userId])).map(element => element.attrs?.content).join('') + extractAndRemoveColor(msg).output,
+                                        text: (this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,data.card || data.nickname])).map(element => element.attrs?.content).join('') + extractAndRemoveColor(msg).output,
                                         color: extractAndRemoveColor(msg).color ? extractAndRemoveColor(msg).color : "white"
                                     }   
                                 ]
