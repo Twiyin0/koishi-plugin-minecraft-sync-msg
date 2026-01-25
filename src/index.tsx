@@ -134,33 +134,18 @@ class MinecraftSyncMsg {
     const dataStr = buffer.toString()
     let data: any
 
-    
-    
     try {
       data = JSON.parse(dataStr)
     } catch (err) {
       logger.error('Failed to parse WebSocket message:', err)
       return
     }
-
-    // logger.info(data.event_name);
     
     const eventName = data.event_name ? getListeningEvent(data.event_name) : ''
 
-    // logger.info('[debug getEvent]> '+eventName + getSubscribedEvents(this.config.event).includes(eventName));
-    
     if (!getSubscribedEvents(this.config.event).includes(eventName)) return;
   
-    // let sendMsg = `[${data.server_name}](${eventTrans[eventName].name}) ${
-    //   eventTrans[eventName].action ? data.player?.nickname + ' ' : ''
-    // }${
-    //   eventTrans[eventName].action ? eventTrans[eventName].action + ' ' : ''
-    // }${
-    //   data.message ? data.message : ''
-    // }`
-
-  
-    let sendMsg:any = h.unescape(data.message ? data.message : '')
+    let sendMsg:any = h.unescape(data.message ? data.message : data.command? data.command : '' )
       .replaceAll('&amp;', '&')
       .replaceAll(/<\/?template>/gi, '')
       .replaceAll(/§./g, '')
@@ -173,7 +158,10 @@ class MinecraftSyncMsg {
       sendMsg = sendMsg.replace(sendImage, `<img src="${sendImage}" />`)
     }
 
-    sendMsg = this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, sendMsg])
+    if (eventName === 'PlayerAchievementEvent' && data.player) {
+      sendMsg = this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, data.achievement.text])
+    } else
+      sendMsg = this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, sendMsg])
     
     if (data.server_name && sendMsg) {
       this.broadcastToChannels(sendMsg)
@@ -235,7 +223,7 @@ class MinecraftSyncMsg {
 
         ws.on('error', (err) => {
           logger.error('重连时发生错误:', err)
-          ws.close()
+          ws?.close()
         })
 
         ws.on('close', () => {
@@ -313,7 +301,6 @@ class MinecraftSyncMsg {
         "data": {
           "message": [
             {
-              // text: `(${session.platform})[${session.event.user.name}] ` + output,
               "text": (this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,session.userId])).map(element => element.attrs.content).join('') + output,
               "color": color || "white"
             }
@@ -321,7 +308,6 @@ class MinecraftSyncMsg {
         }
       }
       this.ws?.send(JSON.stringify(msgData))
-      this.ctx.logger.info(JSON.stringify(msgData))
     } catch (err) {
       logger.error('[minecraft-sync-msg] 消息发送到WebSocket服务端失败', err)
     }
@@ -385,36 +371,25 @@ class MinecraftSyncMsg {
         .filter(str => str.includes(`${bot.platform}`))
         .map(str => str.replace(`${bot.platform}:`, ''))
       bot.broadcast(channels, message, 0)
-      
     })
   }
 
   private setupDisposeHandler() {
     this.ctx.on('dispose', async () => {
-    // logger.info('[debug reload] plugin is reloading!');
-    await this.ctx.registry.delete(mcWss);
-    await this.ctx.registry.delete(MinecraftSyncMsg);
-    await new Promise(() => {
-      this.ws.close();
-      this.ws.removeAllListeners();
-      this.clearReconnectInterval();
-    }) 
-    this.ws = null;
-    this.isDisposing = true;
-    this.isDisposing = false;
-    if (this.ws) {
-      this.ws.removeAllListeners();
-      if (this.ws.readyState === WebSocket.OPEN) {
-        this.ws.close();
-      }
-      this.ws = undefined;
-    }
-    this.clearReconnectInterval();
+      this.ctx.registry.delete(mcWss);
+      this.ctx.registry.delete(MinecraftSyncMsg);
+      // 关掉之前的ws连接避免消息重复发送
+      await new Promise(() => {
+        this.ws?.close();
+        this.ws?.removeAllListeners();
+        this.ws? this.clearReconnectInterval():undefined;
+      }) 
+      this.ws = null;
+      this.isDisposing = true;
     })
+    this.isDisposing = false;
   }
 }
-
-
 
 namespace MinecraftSyncMsg {
   export interface Config extends wsConf, rconConf {

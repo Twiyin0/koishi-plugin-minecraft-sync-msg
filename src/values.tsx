@@ -72,28 +72,6 @@ export const rconConf = Schema.object({
 }).collapse().description("RCON配置")
 
 export const eventList = ['AsyncPlayerChatEvent', 'PlayerCommandPreprocessEvent', 'PlayerDeathEvent', 'PlayerJoinEvent', 'PlayerQuitEvent', 'PlayerAchievementEvent'];
-// export const eventTrans = {
-//     AsyncPlayerChatEvent: {
-//         name: "聊天信息",
-//         action: '说'
-//     },
-//     PlayerCommandPreprocessEvent: {
-//         name: "玩家命令执行事件",
-//         action: "发送了命令"
-//     },
-//     PlayerDeathEvent: {
-//         name: "玩家死亡事件",
-//         action: null
-//     },
-//     PlayerJoinEvent: {
-//         name: "玩家加入事件",
-//         action: "加入了服务器"
-//     },
-//     PlayerQuitEvent: {
-//         name: "玩家退出事件",
-//         action: "离开了服务器"
-//     }
-// }
 
 // 事件映射
 export function getSubscribedEvents(binaryInput: number): string[] {
@@ -127,7 +105,7 @@ const eventMap = {
     BasePlayerCommandEvent: 'PlayerCommandPreprocessEvent',
     PlayerCommandEvent: 'PlayerCommandPreprocessEvent',
 
-    PlayerDeathEvent: 'PlayerDeathEvent', // Spigot 与 Forge 同名
+    PlayerDeathEvent: 'PlayerDeathEvent',
     NeoPlayerDeathEvent: 'PlayerDeathEvent',
     ServerLivingEntityAfterDeathEvent: 'PlayerDeathEvent',
     BaseDeathEvent: 'PlayerDeathEvent',

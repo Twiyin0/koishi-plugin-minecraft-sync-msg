@@ -81,9 +81,7 @@ class mcWss {
                 let eventName = data.event_name? getListeningEvent(data.event_name):'';
                 if (!getSubscribedEvents(this.conf.event).includes(eventName)) return
 
-                // let sendMsg = getSubscribedEvents(this.conf.event).includes(eventName)? `[${data.server_name}](${eventTrans[eventName].name}) ${eventTrans[eventName].action? data.player?.nickname+' ':''}${(eventTrans[eventName].action? eventTrans[eventName].action+' ':'')}${data.message? data.message:''}`:''
-                // let sendMsg:any = h.unescape(sendMsg).replaceAll('&amp;','&').replaceAll(/<\/?template>/gi,'').replaceAll(/§./g,'')
-                let sendMsg:any = h.unescape(data.message ? data.message : '').replaceAll('&amp;','&').replaceAll(/<\/?template>/gi,'').replaceAll(/§./g,'')
+                let sendMsg:any = h.unescape(data.message ? data.message : data.command? data.command : '' ).replaceAll('&amp;','&').replaceAll(/<\/?template>/gi,'').replaceAll(/§./g,'')
                 sendMsg = sendMsg.replaceAll(/<json.*\/>/gi,'<json消息>')
                 const imageMatch = sendMsg.match(/(https?|file):\/\/.*\.(jpg|jpeg|webp|ico|gif|jfif|bmp|png)/gi)
                 const sendImage = imageMatch?.[0]
@@ -91,7 +89,10 @@ class mcWss {
                     sendMsg = sendMsg.replace(sendImage, `<img src="${sendImage}" />`)
                 }
 
-                sendMsg = this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, sendMsg])
+                if (eventName === 'PlayerAchievementEvent' && data.player) {
+                    sendMsg = this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, data.achievement.text])
+                } else
+                    sendMsg = this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, sendMsg])
 
                 if(data.server_name)
                   this.ctx.bots.forEach(async (bot: Bot) => {
@@ -101,6 +102,7 @@ class mcWss {
             })
 
             ws.on('error', (err) => {
+                ws?.close();
                 if (!this.conf.hideConnect) this.ctx.bots.forEach(async (bot: Bot) => {
                   const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
                   bot.broadcast(channels, "与Websocket客户端断通信时发生错误!", 0);
