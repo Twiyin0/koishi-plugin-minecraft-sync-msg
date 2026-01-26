@@ -7,4 +7,4 @@ minecraft-sync-msg:
     PlayerQuitEvent: '[quit] Player {0} left the game'
     PlayerAchievementEvent: '[achievement]{0} has achieved: {1}'
   message:
-    MCReceivePrefix: '({0})[{1}]'
+    MCReceivePrefix: '[{0}]({2}){1}: '

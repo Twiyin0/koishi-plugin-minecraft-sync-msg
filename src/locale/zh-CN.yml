@@ -7,4 +7,4 @@ minecraft-sync-msg:
     PlayerQuitEvent: '[离开]{0} 离开了服务器！'
     PlayerAchievementEvent: '[成就]{0} 获得了成就：{1}'
   message:
-    MCReceivePrefix: '({0})[{1}]'
+    MCReceivePrefix: '[{0}]({2}){1}: '

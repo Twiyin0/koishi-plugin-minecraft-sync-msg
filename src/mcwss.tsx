@@ -143,7 +143,7 @@ class mcWss {
                                 "message": [
                                     {
                                         // text: `(${session.platform})[${session.event.user.name}] ` + extractAndRemoveColor(msg).output,
-                                        text: (this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,data.card || data.nickname])).map(element => element.attrs?.content).join('') + extractAndRemoveColor(msg).output,
+                                        text: (this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,data.card || data.nickname, session.userId])).map(element => element.attrs?.content).join('') + extractAndRemoveColor(msg).output,
                                         color: extractAndRemoveColor(msg).color ? extractAndRemoveColor(msg).color : "white"
                                     }   
                                 ]
