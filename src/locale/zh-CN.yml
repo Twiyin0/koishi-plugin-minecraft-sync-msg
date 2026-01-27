@@ -1,4 +1,8 @@
 minecraft-sync-msg:
+  connection:
+    connectedToWS: 'Websocket服务器连接成功'
+    disconnectedFromWS: '与Websocket服务器断开连接!'
+    connectionErrorWS: '与Websocket服务器通信错误'
   action:
     PlayerJoinEvent: '[加入]{0} 加入了服务器！'
     PlayerCommandPreprocessEvent: '[指令]{0} 执行了指令: {1}'
@@ -8,3 +12,4 @@ minecraft-sync-msg:
     PlayerAchievementEvent: '[成就]{0} 获得了成就：{1}'
   message:
     MCReceivePrefix: '[{0}]({2}){1}: '
+    

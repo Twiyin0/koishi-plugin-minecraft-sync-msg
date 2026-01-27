@@ -1,4 +1,8 @@
 minecraft-sync-msg:
+  connection:
+    connectedToWS: 'Websocket connection up!'
+    disconnectedFromWS: 'Websocket connection down!'
+    connectionErrorWS: 'Websocket connection error!'
   action:
     PlayerJoinEvent: '[join] Player {0} joined the game'
     PlayerCommandPreprocessEvent: '[command] Player {0} executed command: {1}'

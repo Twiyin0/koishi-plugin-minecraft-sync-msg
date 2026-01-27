@@ -68,7 +68,7 @@ class mcWss {
             
             if (!this.conf.hideConnect) this.ctx.bots.forEach(async (bot: Bot) => {
                 const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
-                if (!this.conf.hideConnect) bot.broadcast(channels, "Websocket客户端连接成功!", 0);
+                if (!this.conf.hideConnect) bot.broadcast(channels, this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectedToWS`],{}), 0);
             });
 
             // 添加到连接的客户端集合
@@ -105,9 +105,9 @@ class mcWss {
                 ws?.close();
                 if (!this.conf.hideConnect) this.ctx.bots.forEach(async (bot: Bot) => {
                   const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
-                  bot.broadcast(channels, "与Websocket客户端断通信时发生错误!", 0);
+                  bot.broadcast(channels,this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectionErrorWS`],{}), 0);
                 });
-                this.ctx.logger.error('与Websocket客户端断通信时发生错误!'+err)
+                this.ctx.logger.error(this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectionErrorWS`],{}),err)
             });
 
             // 当客户端断开连接时触发
@@ -115,9 +115,9 @@ class mcWss {
                 this.connectedClients.delete(ws);
                 if (!this.conf.hideConnect) this.ctx.bots.forEach(async (bot: Bot) => {
                     const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
-                    bot.broadcast(channels, "与Websocket客户端断开连接!", 0);
+                    bot.broadcast(channels, this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.disconnectedFromWS`],{}), 0);
                 });
-                this.ctx.logger.error('非正常与Websocket客户端断开连接!')
+                this.ctx.logger.error(this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.disconnectedFromWS`],{}))
             });
         });
     }
@@ -163,10 +163,10 @@ class mcWss {
                         });
                         
                         if (!sent) {
-                            session.send('发送失败! 没有可用的WebSocket连接。');
+                            session.send(this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectionErrorWS`],{}));
                         }
                     } else {
-                        session.send('发送失败! 没有可用的WebSocket连接。');
+                            session.send(this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectionErrorWS`],{}));
                     }
                 }
             }

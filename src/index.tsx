@@ -1,4 +1,4 @@
-import { Context, Schema, Logger, h, Bot } from 'koishi'
+import { Context, Schema, Logger, h, Bot, Fragment } from 'koishi'
 import { WebSocket, RawData } from 'ws'
 import { Rcon } from 'rcon-client'
 import { getListeningEvent, getSubscribedEvents, wsConf, rconConf } from './values'
@@ -77,7 +77,6 @@ class MinecraftSyncMsg {
   private setupWebSocket() {
     if (this.config.wsServer === '服务端') {
       this.pl_fork = this.ctx.plugin(mcWss, this.config)
-      // this.pl_fork = new mcWss(this.ctx, this.config);
       return;
     }
     else
@@ -108,10 +107,10 @@ class MinecraftSyncMsg {
   }
 
   private handleWsOpen() {
-    logger.info('成功连上websocket服务器')
+    logger.info(this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectedToWS`],{}))
     
     if (!this.config.hideConnect) {
-      this.broadcastToChannels("Websocket服务器连接成功!")
+      this.broadcastToChannels(this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectedToWS`],{}))
     }
 
     const msgData: WsMessageData = {
@@ -172,10 +171,10 @@ class MinecraftSyncMsg {
     if (this.isDisposing) return
 
     if (!this.config.hideConnect) {
-      this.broadcastToChannels("与Websocket服务器断开连接!")
+      this.broadcastToChannels(this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.connection.disconnectedFromWS`],{}))
     }
 
-    logger.error('非正常与Websocket服务器断开连接!')
+    logger.error(this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.connection.disconnectedFromWS`],{}))
     this.ws = undefined
     this.reconnectWebSocket()
   }
@@ -184,10 +183,10 @@ class MinecraftSyncMsg {
     if (this.isDisposing) return
 
     if (!this.config.hideConnect) {
-      this.broadcastToChannels("与Websocket服务器断通信时发生错误!")
+      this.broadcastToChannels(this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectionErrorWS`],{}))
     }
 
-    logger.error('与Websocket服务器断通信时发生错误:', err)
+    logger.error(this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectionErrorWS`],{}), err)
   }
 
   private async reconnectWebSocket() {
@@ -366,7 +365,7 @@ class MinecraftSyncMsg {
     return { output: input, color: '' }
   }
 
-  private broadcastToChannels(message: string) {
+  private broadcastToChannels(message: string|Fragment) {
     this.ctx.bots.forEach((bot: Bot) => {
       const channels = this.config.sendToChannel
         .filter(str => str.includes(`${bot.platform}`))

@@ -12,6 +12,14 @@
 rcon并非完全跟控制台一样所有命令都会有反馈
 
 # CHANGELOG
+## v3.0.2
+### 新增
+* 新增连接消息相关本地化（不包含logger）
+`connectedToWS`连上WS发送的消息（兼容WSserver）  
+`disconnectedFromWS`断开WS发送的消息（兼容WSserver）  
+`connectionErrorWS`WS连接出错发送的消息（兼容WSserver）  
+* 对于WSserver的用户而言消息发送未完全本地化，因为WSclient和WSserver的处理方式不兼容同一套本地化，后续会想办法分开
+
 ## v3.0.1
 ### 修改
 * 修改了本地化节点`minecraft-sync-msg.message.MCReceivePrefix`,{0}为聊天平台，{1}为平台用户名，{2}为用户id（为了区分相同用户名）
