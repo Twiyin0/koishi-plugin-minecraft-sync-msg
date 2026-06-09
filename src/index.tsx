@@ -315,7 +315,7 @@ class MinecraftSyncMsg {
 
     try {
       const { output, color } = this.extractAndRemoveColor(msg)
-      let username = session.username || session.author?.nickname || session.author?.card;
+      let username = session.username || session.author?.nickname || session.author?.name || session.author?.nick
       if (!username) {
         try {
           const info = await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId);

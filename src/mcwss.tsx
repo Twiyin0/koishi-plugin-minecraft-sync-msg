@@ -154,7 +154,7 @@ class mcWss {
                     .replaceAll(/<audio.*\/>/gi, renderStr(this.ctx, locale, 'minecraft-sync-msg.message.audioPlaceholder'))
                     .replaceAll(/<img.*\/>/gi, `[[CICode,url=${imgurl}]]`)
                     .replaceAll(/<at.*\/>/gi, `@[${h.select(session.content, 'at')[0]?.attrs?.name ? h.select(session.content, 'at')[0]?.attrs?.name : h.select(session.content, 'at')[0]?.attrs?.id}]`)
-                    let username = session.username || session.author?.nickname || session.author?.card;
+                    let username = session.username || session.author?.nickname || session.author?.name || session.author?.nick
                     if (!username) {
                         try {
                         const info = await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId);
