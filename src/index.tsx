@@ -330,7 +330,7 @@ class MinecraftSyncMsg {
         "data": {
           "message": [
             {
-              "text": this.t('minecraft-sync-msg.message.MCReceivePrefix', [session.platform, username.card || username.nickname, session.userId]) + output,
+              "text": this.t('minecraft-sync-msg.message.MCReceivePrefix', [session.platform, username, session.userId]) + output,
               "color": color || "white"
             }
           ]
