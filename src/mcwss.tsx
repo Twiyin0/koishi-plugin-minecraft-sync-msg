@@ -35,12 +35,15 @@ class mcWss {
         // 设置消息处理（只需要一次）
         this.setupMessageHandler();
         
-        ctx.on('dispose', async () => {
+        ctx.on('dispose', () => {
+            this.connectedClients.forEach(ws => {
+                try { ws.removeAllListeners() } catch {}
+            })
+            this.connectedClients.clear()
             if (this.wss) {
-                this.wss.close();
+                try { this.wss.close() } catch {}
             }
-            this.connectedClients.clear();
-        });
+        })
     }
 
     private setupWebSocketHandlers() {

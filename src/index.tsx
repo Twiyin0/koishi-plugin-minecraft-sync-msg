@@ -91,6 +91,8 @@ class MinecraftSyncMsg {
   }
 
   private connectWebSocket() {
+    if (this.isDisposing) return
+
     const headers = {
       "x-self-name": this.config.serverName,
       "Authorization": `Bearer ${this.config.Token}`,
@@ -208,9 +210,16 @@ class MinecraftSyncMsg {
   }
 
   private async reconnectWebSocket() {
+    if (this.isDisposing) return
+
     this.clearReconnectInterval()
 
     this.reconnectIntervalId = setInterval(async () => {
+      if (this.isDisposing) {
+        this.clearReconnectInterval()
+        return
+      }
+
       if (this.reconnectAttempts >= this.config.maxReconnectCount) {
         logger.error(`已达到最大重连次数 (${this.config.maxReconnectCount} 次)，停止重连。`)
         this.clearReconnectInterval()
@@ -404,17 +413,19 @@ class MinecraftSyncMsg {
   }
 
   private setupDisposeHandler() {
-    this.ctx.on('dispose', async () => {
-      this.ctx.registry.delete(mcWss);
-      this.ctx.registry.delete(MinecraftSyncMsg);
-      // 关掉之前的ws连接避免消息重复发送
-      await new Promise(() => {
-        this.ws?.close();
-        this.ws?.removeAllListeners();
-        this.ws? this.clearReconnectInterval():undefined;
-      }) 
-      this.ws = null;
-      this.isDisposing = true;
+    this.ctx.on('dispose', () => {
+      // 1. 立即置 flag，阻止任何后续的重连逻辑
+      this.isDisposing = true
+      // 2. 立即清除重连定时器
+      this.clearReconnectInterval()
+      // 3. 安全关闭 WS 连接
+      if (this.ws) {
+        try {
+          this.ws.close()
+        } catch {}
+        this.ws.removeAllListeners()
+        this.ws = null
+      }
     })
     this.isDisposing = false;
   }
