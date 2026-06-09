@@ -13,6 +13,11 @@ rcon并非完全跟控制台一样所有命令都会有反馈
 
 # CHANGELOG
 
+## v3.0.4
+### 修复
+调整获取群友昵称的优先级顺序:
+目前优先级：session.username -> session.author.nickname -> session.author.card -> session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId).card || nickname
+
 ## v3.0.3
 ### 新增
 * 支持Translate模型

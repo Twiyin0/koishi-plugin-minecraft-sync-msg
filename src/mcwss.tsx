@@ -154,11 +154,14 @@ class mcWss {
                     .replaceAll(/<audio.*\/>/gi, renderStr(this.ctx, locale, 'minecraft-sync-msg.message.audioPlaceholder'))
                     .replaceAll(/<img.*\/>/gi, `[[CICode,url=${imgurl}]]`)
                     .replaceAll(/<at.*\/>/gi, `@[${h.select(session.content, 'at')[0]?.attrs?.name ? h.select(session.content, 'at')[0]?.attrs?.name : h.select(session.content, 'at')[0]?.attrs?.id}]`)
-                    let username;
-                    try {
-                        username = await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId).card || await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId).nickname
-                    } catch (err) {
-                        username = session.username || session.author?.nickname || (session.author as any)?.card || renderStr(this.ctx, locale, 'minecraft-sync-msg.message.unknownUser')
+                    let username = session.username || session.author?.nickname || session.author?.card;
+                    if (!username) {
+                        try {
+                        const info = await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId);
+                        username = info.card || info.nickname || renderStr(this.ctx, locale, 'minecraft-sync-msg.message.unknownUser');
+                        } catch {
+                        username = renderStr(this.ctx, locale, 'minecraft-sync-msg.message.unknownUser');
+                        }
                     }
                     if (this.connectedClients.size > 0) {
                         let msgData = {

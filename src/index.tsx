@@ -315,11 +315,14 @@ class MinecraftSyncMsg {
 
     try {
       const { output, color } = this.extractAndRemoveColor(msg)
-      let username;
-      try {
-        username = await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId).card || await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId).nickname
-      } catch (err) {
-        username = session.username || session.author?.nickname || session.author?.card || this.t('minecraft-sync-msg.message.unknownUser')
+      let username = session.username || session.author?.nickname || session.author?.card;
+      if (!username) {
+        try {
+          const info = await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId);
+          username = info.card || info.nickname || this.t('minecraft-sync-msg.message.unknownUser');
+        } catch {
+          username = this.t('minecraft-sync-msg.message.unknownUser');
+        }
       }
       
       const msgData: WsMessageData = {
