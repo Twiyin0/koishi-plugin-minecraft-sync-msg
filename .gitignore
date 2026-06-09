@@ -17,3 +17,6 @@ tsconfig.tsbuildinfo
 *.sln
 yarn.lock
 package-lock.json
+
+docs
+docs/

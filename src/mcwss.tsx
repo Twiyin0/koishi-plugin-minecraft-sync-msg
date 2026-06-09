@@ -1,9 +1,15 @@
 import { Context, Logger, Schema, h, Bot } from 'koishi'
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
-import { getListeningEvent, getSubscribedEvents, wsConf } from './values'
+import { getListeningEvent, getSubscribedEvents, wsConf, Translate, resolveTranslate } from './values'
 import zhCN from './locale/zh-CN.yml'
 import enUS from './locale/en-US.yml'
+
+/** i18n 渲染辅助：返回拼接后的纯文本 */
+function renderStr(ctx: Context, locale: string, key: string, args?: any[]): string {
+    return ctx.i18n.render([locale], [key], args || {})
+        .map((el: any) => el.attrs?.content ?? el.content ?? '').join('')
+}
 
 class mcWss {
     private conf: mcWss.Config;
@@ -51,7 +57,7 @@ class mcWss {
                 }
             }
             ws.send(JSON.stringify(msgData));
-            this.ctx.logger.success('客户端连接成功!');
+            this.ctx.logger.success(renderStr(this.ctx, this.conf.locale || 'zh-CN', 'minecraft-sync-msg.connection.clientConnected'));
 
             const headers = req.headers;
 
@@ -60,7 +66,7 @@ class mcWss {
                 this.ctx.logger.error('请求头验证失败!');
                 if (!this.conf.hideConnect) this.ctx.bots.forEach(async (bot: Bot) => {
                     const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
-                    bot.broadcast(channels, "Websocket请求头验证失败!", 0);
+                    bot.broadcast(channels, renderStr(this.ctx, this.conf.locale || 'zh-CN', 'minecraft-sync-msg.connection.headerVerifyFailed'), 0);
                 });
                 ws.close(1008, 'Invalid header!');
                 return;
@@ -68,7 +74,7 @@ class mcWss {
             
             if (!this.conf.hideConnect) this.ctx.bots.forEach(async (bot: Bot) => {
                 const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
-                if (!this.conf.hideConnect) bot.broadcast(channels, this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectedToWS`],{}), 0);
+                if (!this.conf.hideConnect) bot.broadcast(channels, renderStr(this.ctx, this.conf.locale || 'zh-CN', 'minecraft-sync-msg.connection.connectedToWS'), 0);
             });
 
             // 添加到连接的客户端集合
@@ -80,19 +86,29 @@ class mcWss {
                 const data = JSON.parse(buffer.toString())
                 let eventName = data.event_name? getListeningEvent(data.event_name):'';
                 if (!getSubscribedEvents(this.conf.event).includes(eventName)) return
+                const locale = this.conf.locale || 'zh-CN'
 
-                let sendMsg:any = h.unescape(data.message ? data.message : data.command? data.command : '' ).replaceAll('&amp;','&').replaceAll(/<\/?template>/gi,'').replaceAll(/§./g,'')
-                sendMsg = sendMsg.replaceAll(/<json.*\/>/gi,'<json消息>')
+                let sendMsg: any = h.unescape(data.message ? data.message : data.command ? data.command : '').replaceAll('&amp;', '&').replaceAll(/<\/?template>/gi, '').replaceAll(/§./g, '')
+                sendMsg = sendMsg.replaceAll(/<json.*\/>/gi, renderStr(this.ctx, locale, 'minecraft-sync-msg.message.jsonPlaceholder'))
                 const imageMatch = sendMsg.match(/(https?|file):\/\/.*\.(jpg|jpeg|webp|ico|gif|jfif|bmp|png)/gi)
                 const sendImage = imageMatch?.[0]
                 if (sendImage) {
                     sendMsg = sendMsg.replace(sendImage, `<img src="${sendImage}" />`)
                 }
 
-                if (eventName === 'PlayerAchievementEvent' && data.player) {
-                    sendMsg = this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, data.achievement.text])
-                } else
-                    sendMsg = this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, sendMsg])
+                if (eventName === 'PlayerDeathEvent' && data.player) {
+                    const deathText = data.death?.text
+                        ?? (data.death?.key ? resolveTranslate(data.death as Translate) : null)
+                        ?? data.message ?? ''
+                    sendMsg = renderStr(this.ctx, locale, `minecraft-sync-msg.action.${eventName}`, [data.player?.nickname, deathText])
+                } else if (eventName === 'PlayerAchievementEvent' && data.player) {
+                    const achieveText = data.achievement?.translate?.text
+                        ?? (data.achievement?.translate ? resolveTranslate(data.achievement.translate as Translate) : null)
+                        ?? data.achievement?.text ?? ''
+                    sendMsg = renderStr(this.ctx, locale, `minecraft-sync-msg.action.${eventName}`, [data.player?.nickname, achieveText])
+                } else {
+                    sendMsg = renderStr(this.ctx, locale, `minecraft-sync-msg.action.${eventName}`, [data.player?.nickname, sendMsg])
+                }
 
                 if(data.server_name)
                   this.ctx.bots.forEach(async (bot: Bot) => {
@@ -105,9 +121,9 @@ class mcWss {
                 ws?.close();
                 if (!this.conf.hideConnect) this.ctx.bots.forEach(async (bot: Bot) => {
                   const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
-                  bot.broadcast(channels,this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectionErrorWS`],{}), 0);
+                  bot.broadcast(channels, renderStr(this.ctx, this.conf.locale || 'zh-CN', 'minecraft-sync-msg.connection.connectionErrorWS'), 0);
                 });
-                this.ctx.logger.error(this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectionErrorWS`],{}),err)
+                this.ctx.logger.error(renderStr(this.ctx, this.conf.locale || 'zh-CN', 'minecraft-sync-msg.connection.connectionErrorWS'), err)
             });
 
             // 当客户端断开连接时触发
@@ -115,41 +131,48 @@ class mcWss {
                 this.connectedClients.delete(ws);
                 if (!this.conf.hideConnect) this.ctx.bots.forEach(async (bot: Bot) => {
                     const channels = this.conf.sendToChannel.filter(str => str.includes(`${bot.platform}`)).map(str => str.replace(`${bot.platform}:`, ''));
-                    bot.broadcast(channels, this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.disconnectedFromWS`],{}), 0);
+                    bot.broadcast(channels, renderStr(this.ctx, this.conf.locale || 'zh-CN', 'minecraft-sync-msg.connection.disconnectedFromWS'), 0);
                 });
-                this.ctx.logger.error(this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.disconnectedFromWS`],{}))
+                this.ctx.logger.error(renderStr(this.ctx, this.conf.locale || 'zh-CN', 'minecraft-sync-msg.connection.disconnectedFromWS'))
             });
         });
     }
 
     private setupMessageHandler() {
-        let imgurl:any='<unknown image url>'
+        let imgurl: any = '<unknown image url>'
         this.ctx.on('message', async (session) => {
-            // this.ctx.logger.info(`收到聊天消息: ${session.content} 来自 ${session.platform}:${session.channelId}`);
             if (session.content.includes('<img') && h.select(session.content, 'img')[0]?.type === 'img' && h.select(session.content, 'img')[0]?.attrs?.src) {
                 imgurl = h.select(session.content, 'img')[0].attrs.src
             }
 
             if (this.conf.sendToChannel.includes(`${session.platform}:${session.channelId}`) || session.platform === "sandbox") {
                 if ((session.content.startsWith(this.conf.sendprefix)) && session.content !== this.conf.sendprefix) {
+                    const locale = this.conf.locale || 'zh-CN'
                     let msg: string = session.content.replaceAll('&amp;', '&').replaceAll(/<\/?template>/gi, '').replace(this.conf.sendprefix, '')
-                    .replaceAll(/<json.*\/>/gi,'<json消息>').replaceAll(/<video.*\/>/gi,'<视频消息>').replaceAll(/<audio.*\/>/gi,'<音频消息>').replaceAll(/<img.*\/>/gi, `[[CICode,url=${imgurl}]]`)
-                    .replaceAll(/<at.*\/>/gi,`@[${h.select(session.content, 'at')[0]?.attrs?.name? h.select(session.content, 'at')[0]?.attrs?.name:h.select(session.content, 'at')[0]?.attrs?.id}]`)
-                    const data = await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId)
+                    .replaceAll(/<json.*\/>/gi, renderStr(this.ctx, locale, 'minecraft-sync-msg.message.jsonPlaceholder'))
+                    .replaceAll(/<video.*\/>/gi, renderStr(this.ctx, locale, 'minecraft-sync-msg.message.videoPlaceholder'))
+                    .replaceAll(/<audio.*\/>/gi, renderStr(this.ctx, locale, 'minecraft-sync-msg.message.audioPlaceholder'))
+                    .replaceAll(/<img.*\/>/gi, `[[CICode,url=${imgurl}]]`)
+                    .replaceAll(/<at.*\/>/gi, `@[${h.select(session.content, 'at')[0]?.attrs?.name ? h.select(session.content, 'at')[0]?.attrs?.name : h.select(session.content, 'at')[0]?.attrs?.id}]`)
+                    let username;
+                    try {
+                        username = await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId).card || await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId).nickname
+                    } catch (err) {
+                        username = session.username || session.author?.nickname || (session.author as any)?.card || renderStr(this.ctx, locale, 'minecraft-sync-msg.message.unknownUser')
+                    }
                     if (this.connectedClients.size > 0) {
                         let msgData = {
                             "api": "broadcast",
                             data: {
                                 "message": [
                                     {
-                                        // text: `(${session.platform})[${session.event.user.name}] ` + extractAndRemoveColor(msg).output,
-                                        text: (this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,data.card || data.nickname, session.userId])).map(element => element.attrs?.content).join('') + extractAndRemoveColor(msg).output,
+                                        text: renderStr(this.ctx, locale, 'minecraft-sync-msg.message.MCReceivePrefix', [session.platform, username, session.userId]) + extractAndRemoveColor(msg).output,
                                         color: extractAndRemoveColor(msg).color ? extractAndRemoveColor(msg).color : "white"
-                                    }   
+                                    }
                                 ]
                             }
                         };
-                        
+
                         let sent = false;
                         this.connectedClients.forEach((client) => {
                             if (client.readyState === WebSocket.OPEN) {
@@ -161,16 +184,15 @@ class mcWss {
                                 }
                             }
                         });
-                        
+
                         if (!sent) {
-                            session.send(this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectionErrorWS`],{}));
+                            session.send(renderStr(this.ctx, locale, 'minecraft-sync-msg.connection.connectionErrorWS'));
                         }
                     } else {
-                            session.send(this.ctx.i18n.render([this.conf.locale? this.conf.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectionErrorWS`],{}));
+                        session.send(renderStr(this.ctx, locale, 'minecraft-sync-msg.connection.connectionErrorWS'));
                     }
                 }
             }
-            
         });
     }
 

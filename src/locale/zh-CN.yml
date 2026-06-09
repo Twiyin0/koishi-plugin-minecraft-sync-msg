@@ -3,13 +3,22 @@ minecraft-sync-msg:
     connectedToWS: 'Websocket服务器连接成功'
     disconnectedFromWS: '与Websocket服务器断开连接!'
     connectionErrorWS: '与Websocket服务器通信错误'
+    headerVerifyFailed: 'Websocket请求头验证失败!'
+    clientConnected: '客户端连接成功!'
   action:
     PlayerJoinEvent: '[加入]{0} 加入了服务器！'
     PlayerCommandPreprocessEvent: '[指令]{0} 执行了指令: {1}'
-    PlayerDeathEvent: '[死亡]{0} 与山长眠！'
+    PlayerDeathEvent: '[死亡]{0} {1}'
     AsyncPlayerChatEvent: '[聊天]{0} 说：{1}'
     PlayerQuitEvent: '[离开]{0} 离开了服务器！'
     PlayerAchievementEvent: '[成就]{0} 获得了成就：{1}'
   message:
     MCReceivePrefix: '[{0}]({2}){1}: '
-    
+    jsonPlaceholder: '<json消息>'
+    videoPlaceholder: '<视频消息>'
+    audioPlaceholder: '<音频消息>'
+    unknownUser: '未知用户'
+  rcon:
+    dangerousCmd: '危险命令，禁止使用'
+    noFeedback: '该命令无反馈'
+    noPermission: '无权使用该命令'

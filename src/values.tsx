@@ -40,6 +40,8 @@ export const wsConf = Schema.object({
     .description("[仅客户端生效]客户端最大重连次数"),
     maxReconnectInterval: Schema.number().default(60000)
     .description("[仅客户端生效]客户端单次重连时间(ms)"),
+    translator: Schema.array(String).collapse().default(['zh-CN'])
+    .description('翻译文件列表')
 }).collapse().description("Websocket配置")
 
 export interface rconConf {
@@ -70,6 +72,24 @@ export const rconConf = Schema.object({
     .description('普通用户可以使用的命令'),
     cannotCmd: Schema.array(String).default(['restart','stop']).description('不能使用的命令'),
 }).collapse().description("RCON配置")
+
+/** 鹊桥 Translate 模型 (v0.4.1+) */
+export interface Translate {
+  key: string
+  args?: Translate[]
+  text?: string
+}
+
+/**
+ * 递归解析 Translate 对象为纯文本
+ * 优先取 text，无 text 则递归拼接 args，兜底用 key
+ */
+export function resolveTranslate(t: Translate | undefined | null): string {
+  if (!t) return ''
+  if (t.text) return t.text
+  if (t.args?.length) return t.args.map(a => resolveTranslate(a)).join('')
+  return t.key || ''
+}
 
 export const eventList = ['AsyncPlayerChatEvent', 'PlayerCommandPreprocessEvent', 'PlayerDeathEvent', 'PlayerJoinEvent', 'PlayerQuitEvent', 'PlayerAchievementEvent'];
 

@@ -12,6 +12,14 @@
 rcon并非完全跟控制台一样所有命令都会有反馈
 
 # CHANGELOG
+
+## v3.0.3
+### 新增
+* 支持Translate模型
+* 新增本插件i18n有关键值
+### 修复
+修复session.bot.internal.getGroupMemberInfo报不是一个函数的问题，现在使用koishi原生username获取用户名
+
 ## v3.0.2
 ### 新增
 * 新增连接消息相关本地化（不包含logger）

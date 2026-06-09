@@ -1,7 +1,7 @@
 import { Context, Schema, Logger, h, Bot, Fragment } from 'koishi'
 import { WebSocket, RawData } from 'ws'
 import { Rcon } from 'rcon-client'
-import { getListeningEvent, getSubscribedEvents, wsConf, rconConf } from './values'
+import { getListeningEvent, getSubscribedEvents, wsConf, rconConf, Translate, resolveTranslate } from './values'
 import mcWss from './mcwss'
 import zhCN from './locale/zh-CN.yml'
 import enUS from './locale/en-US.yml'
@@ -48,6 +48,13 @@ class MinecraftSyncMsg {
     this.setupDisposeHandler()
     this.ctx.i18n.define('zh-CN', zhCN)
     this.ctx.i18n.define('en-US', enUS)
+  }
+
+  /** i18n 渲染辅助：返回拼接后的纯文本 */
+  private t(key: string, args?: any[]): string {
+    const locale = this.config.locale || 'zh-CN'
+    return this.ctx.i18n.render([locale], [key], args || {})
+      .map((el: any) => el.attrs?.content ?? el.content ?? '').join('')
   }
 
   private setupRcon() {
@@ -107,10 +114,10 @@ class MinecraftSyncMsg {
   }
 
   private handleWsOpen() {
-    logger.info(this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectedToWS`],{}))
-    
+    logger.info(this.t('minecraft-sync-msg.connection.connectedToWS'))
+
     if (!this.config.hideConnect) {
-      this.broadcastToChannels(this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectedToWS`],{}))
+      this.broadcastToChannels(this.t('minecraft-sync-msg.connection.connectedToWS'))
     }
 
     const msgData: WsMessageData = {
@@ -144,23 +151,34 @@ class MinecraftSyncMsg {
 
     if (!getSubscribedEvents(this.config.event).includes(eventName)) return;
   
-    let sendMsg:any = h.unescape(data.message ? data.message : data.command? data.command : '' )
+    let sendMsg: any = h.unescape(data.message ? data.message : data.command ? data.command : '')
       .replaceAll('&amp;', '&')
       .replaceAll(/<\/?template>/gi, '')
       .replaceAll(/§./g, '')
-    sendMsg = sendMsg.replaceAll(/<json.*\/>/gi,'<json消息>')
-  
+    sendMsg = sendMsg.replaceAll(/<json.*\/>/gi, this.t('minecraft-sync-msg.message.jsonPlaceholder'))
+
     const imageMatch = sendMsg.match(/(https?|file):\/\/.*\.(jpg|jpeg|webp|ico|gif|jfif|bmp|png)/gi)
     const sendImage = imageMatch?.[0]
-  
+
     if (sendImage) {
       sendMsg = sendMsg.replace(sendImage, `<img src="${sendImage}" />`)
     }
 
-    if (eventName === 'PlayerAchievementEvent' && data.player) {
-      sendMsg = this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, data.achievement.text])
-    } else
-      sendMsg = this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.action.${eventName}`],[data.player?.nickname, sendMsg])
+    if (eventName === 'PlayerDeathEvent' && data.player) {
+      // v0.4.1+: death 是 Translate 对象；旧版 death.text 或 data.message
+      const deathText = data.death?.text
+        ?? (data.death?.key ? resolveTranslate(data.death as Translate) : null)
+        ?? data.message ?? ''
+      sendMsg = this.t(`minecraft-sync-msg.action.${eventName}`, [data.player?.nickname, deathText])
+    } else if (eventName === 'PlayerAchievementEvent' && data.player) {
+      // v0.4.1+: achievement.translate；旧版 achievement.text
+      const achieveText = data.achievement?.translate?.text
+        ?? (data.achievement?.translate ? resolveTranslate(data.achievement.translate as Translate) : null)
+        ?? data.achievement?.text ?? ''
+      sendMsg = this.t(`minecraft-sync-msg.action.${eventName}`, [data.player?.nickname, achieveText])
+    } else {
+      sendMsg = this.t(`minecraft-sync-msg.action.${eventName}`, [data.player?.nickname, sendMsg])
+    }
     
     if (data.server_name && sendMsg) {
       this.broadcastToChannels(sendMsg)
@@ -171,10 +189,10 @@ class MinecraftSyncMsg {
     if (this.isDisposing) return
 
     if (!this.config.hideConnect) {
-      this.broadcastToChannels(this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.connection.disconnectedFromWS`],{}))
+      this.broadcastToChannels(this.t('minecraft-sync-msg.connection.disconnectedFromWS'))
     }
 
-    logger.error(this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.connection.disconnectedFromWS`],{}))
+    logger.error(this.t('minecraft-sync-msg.connection.disconnectedFromWS'))
     this.ws = undefined
     this.reconnectWebSocket()
   }
@@ -183,10 +201,10 @@ class MinecraftSyncMsg {
     if (this.isDisposing) return
 
     if (!this.config.hideConnect) {
-      this.broadcastToChannels(this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectionErrorWS`],{}))
+      this.broadcastToChannels(this.t('minecraft-sync-msg.connection.connectionErrorWS'))
     }
 
-    logger.error(this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], [`minecraft-sync-msg.connection.connectionErrorWS`],{}), err)
+    logger.error(this.t('minecraft-sync-msg.connection.connectionErrorWS'), err)
   }
 
   private async reconnectWebSocket() {
@@ -289,19 +307,27 @@ class MinecraftSyncMsg {
       .replaceAll('&amp;', '&')
       .replaceAll(/<\/?template>/gi, '')
       .replace(this.config.sendprefix, '')
-      .replaceAll(/<json.*\/>/gi,'<json消息>').replaceAll(/<video.*\/>/gi,'<视频消息>').replaceAll(/<audio.*\/>/gi,'<音频消息>')
+      .replaceAll(/<json.*\/>/gi, this.t('minecraft-sync-msg.message.jsonPlaceholder'))
+      .replaceAll(/<video.*\/>/gi, this.t('minecraft-sync-msg.message.videoPlaceholder'))
+      .replaceAll(/<audio.*\/>/gi, this.t('minecraft-sync-msg.message.audioPlaceholder'))
       .replaceAll(/<img.*\/>/gi, `[[CICode,url=${imgurl}]]`)
       .replaceAll(/<at.*\/>/gi,`@[${h.select(session.content, 'at')[0]?.attrs?.name? h.select(session.content, 'at')[0]?.attrs?.name:h.select(session.content, 'at')[0]?.attrs?.id}]`)
 
     try {
       const { output, color } = this.extractAndRemoveColor(msg)
-      const username = await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId)
+      let username;
+      try {
+        username = await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId).card || await session.bot.internal.getGroupMemberInfo(session.guildId!, session.userId).nickname
+      } catch (err) {
+        username = session.username || session.author?.nickname || session.author?.card || this.t('minecraft-sync-msg.message.unknownUser')
+      }
+      
       const msgData: WsMessageData = {
         "api": "broadcast",
         "data": {
           "message": [
             {
-              "text": (this.ctx.i18n.render([this.config.locale? this.config.locale:'zh-CN'], ['minecraft-sync-msg.message.MCReceivePrefix'],[session.platform,username.card || username.nickname,session.userId])).map(element => element.attrs.content).join('') + output,
+              "text": this.t('minecraft-sync-msg.message.MCReceivePrefix', [session.platform, username.card || username.nickname, session.userId]) + output,
               "color": color || "white"
             }
           ]
@@ -325,17 +351,17 @@ class MinecraftSyncMsg {
       response = await this.sendRconCommand(cmd)
     } else {
       if (this.config.superuser.includes(session.userId)) {
-        response = cmd.includes(this.config.cannotCmd) 
-          ? '危险命令，禁止使用' 
+        response = cmd.includes(this.config.cannotCmd)
+          ? this.t('minecraft-sync-msg.rcon.dangerousCmd')
           : await this.sendRconCommand(cmd)
-        response = response || '该命令无反馈'
+        response = response || this.t('minecraft-sync-msg.rcon.noFeedback')
       } else if (cmd.includes(this.config.commonCmd)) {
-        response = this.config.cannotCmd.includes(cmd) 
-          ? '危险命令，禁止使用' 
+        response = this.config.cannotCmd.includes(cmd)
+          ? this.t('minecraft-sync-msg.rcon.dangerousCmd')
           : await this.sendRconCommand(cmd)
-        response = response || '该命令无反馈'
+        response = response || this.t('minecraft-sync-msg.rcon.noFeedback')
       } else {
-        response = '无权使用该命令'
+        response = this.t('minecraft-sync-msg.rcon.noPermission')
       }
     }
 
